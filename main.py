@@ -8,5 +8,13 @@ Bootstrap(app)
 def home():
     return render_template('index.html')
 
+@app.route('/templates')
+def templates():
+    return render_template('message-templates.html')
+
+@app.route('/templates/new')
+def new_template():
+    return render_template('create-template.html')
+
 if __name__ == "__main__":
     app.run(debug=True)

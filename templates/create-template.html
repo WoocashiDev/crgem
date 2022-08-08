@@ -1,14 +1,14 @@
-{% include "header.html" %}
+{% include 'header.html' %}
 <div id="layoutSidenav_content">
 	<main>
 		<div class="container mt-4">
 			<div class="row d-flex align-items-center">
-				<div class="col-lg-3">
-					<h2>Templates</h2>
+				<div class="col-lg-4">
+					<h2>Create new template</h2>
 				</div>
 			
 				<div class="col-lg-3">
-					<a class="btn btn-primary" href="{{url_for('new_template')}}">New template</a>
+					<a class="btn btn-primary" href="{{url_for('templates')}}">See all templates</a>
 				</div>
 			</div>
 			<hr>
@@ -46,6 +46,4 @@
 			
 		</div>
 	</main>
-
-
-{% include "footer.html" %}
+{% include 'footer.html' %}
