@@ -1,4 +1,8 @@
+
+{% import "bootstrap/wtf.html" as wtf %}
+
 {% include 'header.html' %}
+
 <div id="layoutSidenav_content">
 	<main>
 		<div class="container mt-4">
@@ -12,38 +16,11 @@
 				</div>
 			</div>
 			<hr>
-			<div class="row d-flex align-items-center mt-4">
-				<h3>Available templates</h3>
-				<p>There are no available templates</p>
+			<div class="mt-4">
+				{{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
 			</div>
-		
-				<table class="table">
-				  <thead>
-				    <tr>
-				      <th scope="col">#</th>
-				      <th scope="col">Name</th>
-				      <th scope="col">Date</th>
-				      <th scope="col">Created by</th>
-					    <th scope="col">Actions</th>
-				    </tr>
-				  </thead>
-				  <tbody>
-				    <tr>
-				      <th scope="row">1</th>
-				      <td>Standard Template</td>
-				      <td>08/08/2022</td>
-				      <td>Woocashi</td>
-					    <td>
-						    <a href="">
-							    <i class="fa-solid fa-pen-to-square p-1" title="edit template"></i>
-						    <a href="">
-						        <i class="fa-solid fa-ban p-1" title="delete template"></i>
-					        </a>
-					    </td>
-				    </tr>
-				  </tbody>
-				</table>
-			
 		</div>
 	</main>
+	{{ ckeditor.load() }}
+	{{ ckeditor.config(name='text') }}
 {% include 'footer.html' %}
