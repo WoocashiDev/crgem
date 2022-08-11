@@ -1,21 +1,25 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm
+from forms import NewTemplateForm, NewCandidateForm
+from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey, Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import date
+from datetime import date, datetime
 
-
+os.environ['SECRET_KEY'] = 'TOP_SECRET_KEY!'
 # INITIATING APP EXTENSIONS
 
 app = Flask(__name__)
+csrf = CSRFProtect()
+csrf.init_app(app)
 Bootstrap(app)
 ckeditor = CKEditor(app)
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
+print(os.environ.get("SECRET_KEY"))
 
 # CONNECTING TO DB
 
@@ -32,6 +36,24 @@ class Template(db.Model):
     text = db.Column(db.Text, nullable=False)
     date = db.Column(db.Date, nullable=False)
     created_by = db.Column(db.Integer, nullable=False)
+
+class Interview(db.Model):
+    __tablename__="interviews"
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String, nullable=False)
+    last_name = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, nullable=False)
+    phone = db.Column(db.String, nullable=False)
+    req_id = db.Column(db.String, nullable=False)
+    role = db.Column(db.String, nullable=False)
+    recruiter = db.Column(db.String, nullable=False)
+    interviewers = db.Column(db.String, nullable=False)
+    date = db.Column(db.Date, nullable=True)
+    time = db.Column(db.Time, nullable=True)
+    notes = db.Column(db.Text, nullable=False)
+    created_by = db.Column(db.Integer, nullable=False)
+    creation_time = db.Column(db.DateTime, nullable=False)
+    completion_time = db.Column(db.DateTime, nullable=True)
 
 db.create_all()
 
@@ -88,6 +110,70 @@ def delete_template(template_id):
     db.session.delete(template_to_delete)
     db.session.commit()
     return redirect(url_for('templates'))
+
+##### CANDIDATES MANAGEMENT
+@app.route('/pipeline')
+def pipeline():
+    interviews = db.session.query(Interview).all()
+    return render_template('pipeline.html', interviews=interviews)
+
+@app.route('/pipeline/new', methods=['GET', 'POST'])
+def pipeline_new():
+    form = NewCandidateForm()
+    if form.validate_on_submit():
+        new_interview = Interview(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            role=form.role.data,
+            req_id=form.req_id.data,
+            recruiter=form.recruiter.data,
+            interviewers=form.interviewers.data,
+            date=form.date.data,
+            time=form.time.data,
+            notes=form.notes.data,
+            ### ADD CURRENT USER ID LATER
+            created_by=1,
+            creation_time=datetime.now()
+            )
+        db.session.add(new_interview)
+        db.session.commit()
+        return redirect(url_for('pipeline'))
+    return render_template('pipeline_new.html', form=form)
+
+@app.route('/pipeline/edit/<int:interview_id>', methods=['POST', 'GET'])
+def pipeline_edit(interview_id):
+    interview = Interview.query.get(interview_id)
+    form = NewCandidateForm(
+        first_name=interview.first_name,
+        last_name=interview.last_name,
+        email=interview.email,
+        phone=interview.phone,
+        role=interview.role,
+        req_id=interview.req_id,
+        recruiter=interview.recruiter,
+        interviewers=interview.interviewers,
+        date=interview.date,
+        time=interview.time,
+        notes=interview.notes,
+    )
+    if form.validate_on_submit():
+        for key in form.__dict__.keys():
+            if key in interview.__dict__.keys():
+                setattr(interview, key, form[key].data)
+        interview.creation_time = datetime.now()
+        db.session.commit()
+        return redirect(url_for('pipeline'))
+    return render_template('pipeline_edit.html', form=form, interview_id=interview_id)
+
+@app.route('/pipeline/delete/<int:interview_id>')
+def pipeline_delete(interview_id):
+    interview_to_delete = Interview.query.get(interview_id)
+    db.session.delete(interview_to_delete)
+    db.session.commit()
+    return redirect(url_for('pipeline'))
+
 
 if __name__ == "__main__":
     app.run(debug=True)
