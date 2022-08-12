@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm, NewCandidateForm, NewUserForm
+from forms import NewTemplateForm, NewCandidateForm, NewUserForm, LoginForm
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
@@ -9,6 +9,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey, Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import date, datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin, login_user, LoginManager, login_required, current_user,logout_user
 
 os.environ['SECRET_KEY'] = 'TOP_SECRET_KEY!'
 # INITIATING APP EXTENSIONS
@@ -19,7 +21,8 @@ csrf.init_app(app)
 Bootstrap(app)
 ckeditor = CKEditor(app)
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
-print(os.environ.get("SECRET_KEY"))
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 # CONNECTING TO DB
 
@@ -29,7 +32,7 @@ db = SQLAlchemy(app)
 
 # CONFIGURE DATABASE
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__="users"
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String, nullable=False)
@@ -67,25 +70,51 @@ class Interview(db.Model):
 
 db.create_all()
 
+# USER SESSION MANAGEMENT
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return User.query.get(user_id)
+    except:
+        return None
+
 # APP ROUTING
 
-@app.route('/login')
+@app.route('/login', methods=['POST', 'GET'])
 def login():
-    return render_template('login.html')
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.login.data).first()
+        if user:
+            if check_password_hash(user.password, form.password.data):
+                login_user(user)
+                print(current_user.is_authenticated)
+                return redirect(url_for('home'))
+            else:
+                flash('The password seems incorrect. Try again')
+        else:
+            flash('The user with provided login does not exist')
+    return render_template('login.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
     form = NewUserForm()
     if form.validate_on_submit():
-
-
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256', salt_length=8)
         new_user = User(
             first_name=form.first_name.data,
             last_name=form.last_name.data,
             email=form.email.data,
             phone=form.phone.data,
             type=form.type.data,
-            password=form.password.data,
+            password=hashed_password,
         )
         user_email = User.query.filter_by(email=new_user.email).first()
         print(user_email)
@@ -100,11 +129,11 @@ def register():
             for err in error_messages:
                 flash(err)
 
-    return render_template('register.html', form=form)
+    return render_template('register.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 ########### MANAGING MESSAGE TEMPLATES
 
@@ -115,7 +144,7 @@ def home():
 def templates():
     templates = db.session.query(Template).all()
     print(templates)
-    return render_template('message-templates.html', templates=templates)
+    return render_template('message-templates.html', templates=templates, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 # adding new template
 
@@ -128,7 +157,7 @@ def new_template():
         db.session.add(new_template)
         db.session.commit()
         return redirect(url_for('templates'))
-    return render_template('create-template.html', form=form)
+    return render_template('create-template.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 # editing templates
 @app.route('/templates/edit/<int:template_id>', methods=['POST', 'GET'])
@@ -144,7 +173,7 @@ def edit_template(template_id):
         db.session.commit()
         return redirect(url_for('templates'))
 
-    return render_template('edit-template.html', form=form, template_id=template_id)
+    return render_template('edit-template.html', form=form, template_id=template_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 # deleting templates
 @app.route('/templates/delete/<int:template_id>')
@@ -158,7 +187,7 @@ def delete_template(template_id):
 @app.route('/pipeline')
 def pipeline():
     interviews = db.session.query(Interview).all()
-    return render_template('pipeline.html', interviews=interviews)
+    return render_template('pipeline.html', interviews=interviews, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 @app.route('/pipeline/new', methods=['GET', 'POST'])
 def pipeline_new():
@@ -183,7 +212,7 @@ def pipeline_new():
         db.session.add(new_interview)
         db.session.commit()
         return redirect(url_for('pipeline'))
-    return render_template('pipeline_new.html', form=form)
+    return render_template('pipeline_new.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 @app.route('/pipeline/edit/<int:interview_id>', methods=['POST', 'GET'])
 def pipeline_edit(interview_id):
@@ -208,7 +237,7 @@ def pipeline_edit(interview_id):
         interview.creation_time = datetime.now()
         db.session.commit()
         return redirect(url_for('pipeline'))
-    return render_template('pipeline_edit.html', form=form, interview_id=interview_id)
+    return render_template('pipeline_edit.html', form=form, interview_id=interview_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 @app.route('/pipeline/delete/<int:interview_id>')
 def pipeline_delete(interview_id):

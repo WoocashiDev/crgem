@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField, DateField, TimeField
+from wtforms import StringField, SubmitField, PasswordField, DateField, TimeField, SelectField
 from flask_ckeditor import CKEditorField
 from wtforms.validators import DataRequired, URL, Email, Length
 
@@ -8,9 +8,14 @@ class NewUserForm(FlaskForm):
     last_name = StringField('Last Name', validators=[DataRequired(message="Last Name is required")])
     email = StringField('Email - serving as Login ID', validators=[DataRequired(message="Email is required"), Email()])
     phone = StringField('Phone', validators=[DataRequired(message="Phone is required"), Length(min=10, message="Please make sure to add country code: eg. +48 573 341 312")])
-    type = StringField('User type', validators=[DataRequired(message="User type is required")])
+    type = SelectField('User type', validators=[DataRequired(message="User type is required")], choices=['Recruiter', 'Coordinator'])
     password = PasswordField('Password', validators=[DataRequired(message="Password is required")])
     submit = SubmitField('Submit')
+
+class LoginForm(FlaskForm):
+    login = StringField("Email", validators=[DataRequired(), Email()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    submit = SubmitField("Log in")
 
 class NewTemplateForm(FlaskForm):
     name = StringField('Template name', validators=[DataRequired()])
