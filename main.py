@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm, NewCandidateForm
+from forms import NewTemplateForm, NewCandidateForm, NewUserForm
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
@@ -28,6 +28,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # CONFIGURE DATABASE
+
+class User(db.Model):
+    __tablename__="users"
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String, nullable=False)
+    last_name = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, nullable=False, unique=True)
+    phone = db.Column(db.String, nullable=False)
+    type = db.Column(db.String, nullable=False)
+    password = db.Column(db.String, nullable=False)
 
 class Template(db.Model):
     __tablename__="templates"
@@ -58,6 +68,39 @@ class Interview(db.Model):
 db.create_all()
 
 # APP ROUTING
+
+@app.route('/login')
+def login():
+    return render_template('login.html')
+
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    form = NewUserForm()
+    if form.validate_on_submit():
+
+
+        new_user = User(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            type=form.type.data,
+            password=form.password.data,
+        )
+        user_email = User.query.filter_by(email=new_user.email).first()
+        print(user_email)
+        if not user_email:
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect(url_for('home'))
+        else:
+            flash('The email provided already exists in the database. Please select another one or log in to your account')
+    else:
+        for field_name, error_messages in form.errors.items():
+            for err in error_messages:
+                flash(err)
+
+    return render_template('register.html', form=form)
 
 @app.route('/')
 def home():
