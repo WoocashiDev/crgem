@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm, NewCandidateForm, NewUserForm, LoginForm
+from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
@@ -10,7 +10,8 @@ from sqlalchemy import ForeignKey, Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import date, datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import UserMixin, login_user, LoginManager, login_required, current_user,logout_user
+from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
+from werkzeug.utils import secure_filename
 
 os.environ['SECRET_KEY'] = 'TOP_SECRET_KEY!'
 # INITIATING APP EXTENSIONS
@@ -23,6 +24,7 @@ ckeditor = CKEditor(app)
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 login_manager = LoginManager()
 login_manager.init_app(app)
+Base = declarative_base()
 
 # CONNECTING TO DB
 
@@ -32,25 +34,30 @@ db = SQLAlchemy(app)
 
 # CONFIGURE DATABASE
 
-class User(db.Model, UserMixin):
+class User(db.Model, UserMixin, Base):
     __tablename__="users"
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String, nullable=False)
     last_name = db.Column(db.String, nullable=False)
+    full_name = db.Column(db.String, nullable=False)
     email = db.Column(db.String, nullable=False, unique=True)
     phone = db.Column(db.String, nullable=False)
     type = db.Column(db.String, nullable=False)
     password = db.Column(db.String, nullable=False)
+    interviews = relationship("Interview", back_populates="created_by")
+    templates = relationship("Template", back_populates="created_by")
+    candidates = relationship("Candidate", back_populates="created_by")
 
-class Template(db.Model):
+class Template(db.Model, Base):
     __tablename__="templates"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     text = db.Column(db.Text, nullable=False)
     date = db.Column(db.Date, nullable=False)
-    created_by = db.Column(db.Integer, nullable=False)
+    owner_id = Column(Integer, ForeignKey('users.id'))
+    created_by = relationship("User", back_populates="templates")
 
-class Interview(db.Model):
+class Interview(db.Model, Base):
     __tablename__="interviews"
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String, nullable=False)
@@ -64,9 +71,23 @@ class Interview(db.Model):
     date = db.Column(db.Date, nullable=True)
     time = db.Column(db.Time, nullable=True)
     notes = db.Column(db.Text, nullable=False)
-    created_by = db.Column(db.Integer, nullable=False)
+    owner_id = Column(Integer, ForeignKey('users.id'))
+    created_by = relationship("User", back_populates="interviews")
     creation_time = db.Column(db.DateTime, nullable=False)
     completion_time = db.Column(db.DateTime, nullable=True)
+
+class Candidate(db.Model, Base):
+    __tablename__="candidates"
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String, nullable=False)
+    last_name = db.Column(db.String, nullable=False)
+    full_name = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, nullable=False, unique=True)
+    phone = db.Column(db.String, nullable=False)
+    cv = db.Column(db.String, nullable=True)
+    owner_id = Column(Integer, ForeignKey('users.id'))
+    created_by = relationship("User", back_populates="candidates")
+    created_date = db.Column(db.Date, nullable=False)
 
 db.create_all()
 
@@ -111,6 +132,7 @@ def register():
         new_user = User(
             first_name=form.first_name.data,
             last_name=form.last_name.data,
+            full_name = f'{form.first_name.data} {form.last_name.data}',
             email=form.email.data,
             phone=form.phone.data,
             type=form.type.data,
@@ -138,7 +160,7 @@ def home():
 ########### MANAGING MESSAGE TEMPLATES
 
 
-# displaying templates list
+# MANAGING COMMUNICATION TEMPLATES
 
 @app.route('/templates')
 def templates():
@@ -146,20 +168,19 @@ def templates():
     print(templates)
     return render_template('message-templates.html', templates=templates, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
-# adding new template
 
 @app.route('/templates/new', methods=['POST', 'GET'])
 def new_template():
     form = NewTemplateForm()
     if form.validate_on_submit():
         # CHANGE USER ID LATER !!!
-        new_template = Template(name=form.name.data, text=form.text.data, date=date.today(), created_by='1')
+        new_template = Template(name=form.name.data, text=form.text.data, date=date.today(), owner_id=current_user.id)
         db.session.add(new_template)
         db.session.commit()
         return redirect(url_for('templates'))
     return render_template('create-template.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
-# editing templates
+
 @app.route('/templates/edit/<int:template_id>', methods=['POST', 'GET'])
 def edit_template(template_id):
     template = Template.query.get(template_id)
@@ -175,7 +196,7 @@ def edit_template(template_id):
 
     return render_template('edit-template.html', form=form, template_id=template_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
-# deleting templates
+
 @app.route('/templates/delete/<int:template_id>')
 def delete_template(template_id):
     template_to_delete = Template.query.get(template_id)
@@ -183,15 +204,17 @@ def delete_template(template_id):
     db.session.commit()
     return redirect(url_for('templates'))
 
-##### CANDIDATES MANAGEMENT
+##### PIPELINE MANAGEMENT
+
 @app.route('/pipeline')
 def pipeline():
     interviews = db.session.query(Interview).all()
     return render_template('pipeline.html', interviews=interviews, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
+
 @app.route('/pipeline/new', methods=['GET', 'POST'])
 def pipeline_new():
-    form = NewCandidateForm()
+    form = NewInterviewForm()
     if form.validate_on_submit():
         new_interview = Interview(
             first_name=form.first_name.data,
@@ -205,19 +228,19 @@ def pipeline_new():
             date=form.date.data,
             time=form.time.data,
             notes=form.notes.data,
-            ### ADD CURRENT USER ID LATER
-            created_by=1,
-            creation_time=datetime.now()
+            owner_id=current_user.id,
+            creation_time=datetime.now(),
             )
         db.session.add(new_interview)
         db.session.commit()
         return redirect(url_for('pipeline'))
     return render_template('pipeline_new.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
+
 @app.route('/pipeline/edit/<int:interview_id>', methods=['POST', 'GET'])
 def pipeline_edit(interview_id):
     interview = Interview.query.get(interview_id)
-    form = NewCandidateForm(
+    form = NewInterviewForm(
         first_name=interview.first_name,
         last_name=interview.last_name,
         email=interview.email,
@@ -239,12 +262,122 @@ def pipeline_edit(interview_id):
         return redirect(url_for('pipeline'))
     return render_template('pipeline_edit.html', form=form, interview_id=interview_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
+
 @app.route('/pipeline/delete/<int:interview_id>')
 def pipeline_delete(interview_id):
     interview_to_delete = Interview.query.get(interview_id)
     db.session.delete(interview_to_delete)
     db.session.commit()
     return redirect(url_for('pipeline'))
+
+
+# MANAGING USERS FROM ADMIN PANEL
+
+@app.route('/users')
+def users():
+    users = db.session.query(User).all()
+    return render_template('users.html', users=users)
+
+
+@app.route('/users/new', methods=['POST', 'GET'])
+def user_new():
+    form = NewUserAdminForm()
+    if form.validate_on_submit():
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256', salt_length=8)
+        new_user = User(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            full_name=f'{form.first_name.data} {form.last_name.data}',
+            email=form.email.data,
+            phone=form.phone.data,
+            type=form.type.data,
+            password=hashed_password,
+        )
+        user_email = User.query.filter_by(email=new_user.email).first()
+        print(user_email)
+        if not user_email:
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect(url_for('users'))
+        else:
+            flash(
+                'The email provided already exists in the database. Please select another one to register the new user')
+    else:
+        for field_name, error_messages in form.errors.items():
+            for err in error_messages:
+                flash(err)
+
+    return render_template('user_new.html', form=form)
+
+
+@app.route('/users/edit/<int:user_id>', methods=["Post", "GET"])
+def user_edit(user_id):
+    user_to_edit = User.query.get(user_id)
+    form = NewUserAdminForm(
+        first_name=user_to_edit.first_name,
+        last_name=user_to_edit.last_name,
+        email=user_to_edit.email,
+        phone=user_to_edit.phone,
+        type=user_to_edit.type,
+    )
+
+    if form.validate_on_submit():
+        for key in form.__dict__.keys():
+            if key in user_to_edit.__dict__.keys():
+                setattr(user_to_edit, key, form[key].data)
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256', salt_length=8)
+        user_to_edit.password = hashed_password
+        db.session.commit()
+        return redirect(url_for('users'))
+
+    return render_template('user_edit.html', user_id=user_id, form=form)
+
+
+#### CANDIDATES MANAGEMENT
+@app.route('/candidates')
+def candidates():
+    candidates = db.session.query(Candidate).all()
+
+
+    return render_template('candidates.html', candidates=candidates, current_user=current_user)
+
+@app.route('/candidates/new', methods=['POST', 'GET'])
+def candidates_new():
+    form = NewCandidateForm()
+    if form.validate_on_submit():
+
+
+        if form.cv.data:
+            cv_filename = secure_filename(form.cv.data.filename)
+            form.cv.data.save('Uploads/CVs/'+cv_filename)
+        else:
+            cv_filename = ''
+
+
+        new_candidate = Candidate(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            full_name=f'{form.first_name.data} {form.last_name.data}',
+            email=form.email.data,
+            phone=form.phone.data,
+            owner_id=current_user.id,
+            created_date=date.today(),
+            cv=cv_filename,
+        )
+
+        candidate_email = Candidate.query.filter_by(email=new_candidate.email).first()
+        if not candidate_email:
+            db.session.add(new_candidate)
+            db.session.commit()
+            return redirect(url_for('candidates'))
+        else:
+            flash(
+                'The email provided already exists in the database. Please select another one to register the candidate')
+    else:
+        for field_name, error_messages in form.errors.items():
+            for err in error_messages:
+                flash(err)
+    return render_template('candidates_new.html', form=form, current_user=current_user)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,57 @@
+
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% include 'header.html' %}
+
+<div id="layoutSidenav_content">
+	<main>
+		<div class="container mt-4">
+			<div class="row d-flex align-items-center">
+				<div class="col-lg-6">
+					<h2>Users - admin view</h2>
+				</div>
+			
+				<div class="col-lg-6 d-flex justify-content-end">
+					<a class="btn btn-primary" href="{{url_for('user_new', form=form)}}">New User</a>
+				</div>
+			</div>
+			<hr>
+			{% if users|length == 0 %}
+			<p>There are no users registered in this CRM environment</p>
+			{% else %}
+			<table class="table">
+				  <thead>
+				    <tr>
+				      <th scope="col">ID</th>
+				      <th scope="col">Name</th>
+				      <th scope="col">Surname</th>
+				      <th scope="col">Email</th>
+					    <th scope="col">Phone</th>
+					    <th scope="col">User Type</th>
+				    </tr>
+				  </thead>
+				  <tbody>
+				  {% for user in users %}
+				    <tr>
+				      <th scope="row">{{user.id}}</th>
+				      <td>{{user.first_name}}</td>
+				      <td>{{user.last_name}}</td>
+				      <td>{{user.email}}</td>
+					    <td>{{user.phone}}</td>
+					    <td>{{user.type}}</td>
+					    <td>
+						    <a href="{{url_for('user_edit', user_id=user.id, form=form)}}">
+							    <i class="fa-solid fa-pen-to-square p-1" title="edit user"></i>
+						    <a href="url_for('user_new', form=form)">
+						        <i class="fa-solid fa-ban p-1" title="delete user"></i>
+					        </a>
+					    </td>
+				    </tr>
+				  {% endfor %}
+				  
+				  </tbody>
+				</table>
+			{% endif %}
+		</div>
+	</main>
+{% include 'footer.html' %}

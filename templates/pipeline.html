@@ -23,6 +23,7 @@
 				  <thead>
 				    <tr>
 				      <th scope="col">#</th>
+					    <th scope="col">Owner</th>
 				      <th scope="col">Name</th>
 				      <th scope="col">Surname</th>
 				      <th scope="col">Email</th>
@@ -40,6 +41,7 @@
 				  {% for interview in interviews %}
 				    <tr>
 				      <th scope="row">{{interview.id}}</th>
+					    <td>{{interview.created_by.full_name}}</td>
 				      <td>{{interview.first_name}}</td>
 				      <td>{{interview.last_name}}</td>
 				      <td>{{interview.email}}</td>

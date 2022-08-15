@@ -59,6 +59,10 @@
                                 <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
                                 Templates
                             </a>
+                            <a class="nav-link" href={{url_for('candidates')}}>
+                                <div class="sb-nav-link-icon"><i class="fa-solid fa-file-user"></i></div>
+                                Candidates
+                            </a>
                             <a class="nav-link" href='#'>
                                 <div class="sb-nav-link-icon"><i class="fa-solid fa-people-group"></i></div>
                                 Coordinators
@@ -68,13 +72,13 @@
                                 Recruiters
                             </a>
                             <div class="sb-sidenav-menu-heading">ADMIN PANEL</div>
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="{{url_for('users')}}">
                                 <div class="sb-nav-link-icon"><i class="fa-solid fa-user-group"></i></div>
                                 Users
                             </a>
                             <a class="nav-link" href="{{url_for('login')}}">
                                 <div class="sb-nav-link-icon"><i class="fa-solid fa-user-group"></i></div>
-                                login
+                                Login
                             </a>
                             <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                                 <nav class="sb-sidenav-menu-nested nav">

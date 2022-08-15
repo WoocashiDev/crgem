@@ -1,0 +1,35 @@
+
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% include 'header.html' %}
+
+<div id="layoutSidenav_content">
+	<main>
+		<div class="container mt-4">
+			<div class="row d-flex align-items-center">
+				<div class="col-lg-6">
+					<h2>Create new user</h2>
+				</div>
+			
+				<div class="col-lg-6 d-flex justify-content-end">
+					<a class="btn btn-primary ms-2" href="{{url_for('users')}}">All Users</a>
+				</div>
+			</div>
+			<hr>
+			<div class="mt-4">
+				{{ form.csrf_token }}
+				{{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
+				{% with messages = get_flashed_messages() %}
+					{% if messages %}
+					<ul class="list-group mt-4">
+						{% for message in messages %}
+						<li class="list-group-item">{{ message }}</li>
+						{% endfor %}
+					</ul>
+					{% endif %}
+				{% endwith %}
+			</div>
+		</div>
+	</main>
+
+{% include 'footer.html' %}
