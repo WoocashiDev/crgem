@@ -107,6 +107,8 @@ class Task(db.Model, Base):
     date_sent = db.Column(db.Date, nullable=False)
     date_received = db.Column(db.Date, nullable=True)
     date_completed = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String, nullable=False)
+    is_archived = db.Column(db.Boolean, nullable=False)
 
 db.create_all()
 
@@ -405,6 +407,7 @@ def candidates_new():
                 flash(err)
     return render_template('candidates_new.html', form=form, current_user=current_user)
 
+### MANAGING TASKS
 
 @app.route('/tasks/new', methods=['POST', 'GET'])
 def tasks_new():
@@ -421,17 +424,49 @@ def tasks_new():
         chosen_recipient = User.query.filter_by(full_name=form.recipient.data).first()
         chosen_candidate = Candidate.query.filter_by(full_name=form.candidate_id.data).first()
         new_task = Task(
-            sender_id = current_user.id,
-            recipient_id = chosen_recipient.id,
-            candidate_id = chosen_candidate.id,
-            interviewers = form.interviewers.data,
-            role = form.role.data,
-            description = form.description.data,
-            date_sent = date.today(),
+            sender_id=current_user.id,
+            recipient_id=chosen_recipient.id,
+            candidate_id=chosen_candidate.id,
+            interviewers=form.interviewers.data,
+            role=form.role.data,
+            description=form.description.data,
+            date_sent=date.today(),
+            is_archived=False,
+            status="pending",
         )
         db.session.add(new_task)
         db.session.commit()
     return render_template('tasks_new.html', form=form)
+
+@app.route('/inbox/task_accept/<int:task_id>', methods=['POST', 'GET'])
+def task_accept(task_id):
+    accepted_task = Task.query.filter_by(id=task_id).first()
+    accepted_task.status = "accepted"
+    accepted_task.date_received = date.today()
+    new_interview = Interview(
+        first_name = accepted_task.candidate.first_name,
+        last_name = accepted_task.candidate.last_name,
+        email=accepted_task.candidate.email,
+        phone=accepted_task.candidate.phone,
+        req_id="TBC",
+        role=accepted_task.role,
+        recruiter=accepted_task.from_user.full_name,
+        interviewers=accepted_task.interviewers,
+        notes=accepted_task.description,
+        owner_id=accepted_task.to_user.id,
+        creation_time=datetime.now(),
+    )
+    db.session.add(new_interview)
+    db.session.commit()
+    return redirect(url_for('inbox'))
+
+@app.route('/inbox')
+def inbox():
+    user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
+    print(user_tasks)
+    return render_template('inbox.html', user_tasks=user_tasks)
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
