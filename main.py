@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm
+from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
@@ -47,6 +47,8 @@ class User(db.Model, UserMixin, Base):
     interviews = relationship("Interview", back_populates="created_by")
     templates = relationship("Template", back_populates="created_by")
     candidates = relationship("Candidate", back_populates="created_by")
+    tasks_sent = relationship("Task", primaryjoin="User.id==Task.sender_id", back_populates="from_user")
+    tasks_received = relationship("Task", primaryjoin="User.id==Task.recipient_id", back_populates="to_user")
 
 class Template(db.Model, Base):
     __tablename__="templates"
@@ -88,6 +90,23 @@ class Candidate(db.Model, Base):
     owner_id = Column(Integer, ForeignKey('users.id'))
     created_by = relationship("User", back_populates="candidates")
     created_date = db.Column(db.Date, nullable=False)
+    tasks = relationship("Task", back_populates="candidate")
+
+class Task(db.Model, Base):
+    __tablename__="tasks"
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    recipient_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    from_user = relationship("User", foreign_keys=[sender_id], back_populates="tasks_sent")
+    to_user = relationship("User", foreign_keys=[recipient_id], back_populates="tasks_received")
+    candidate_id = Column(Integer, ForeignKey('candidates.id'))
+    candidate = relationship("Candidate", foreign_keys=[candidate_id], back_populates="tasks")
+    interviewers = db.Column(db.String, nullable=False)
+    role = db.Column(db.String, nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    date_sent = db.Column(db.Date, nullable=False)
+    date_received = db.Column(db.Date, nullable=True)
+    date_completed = db.Column(db.Date, nullable=True)
 
 db.create_all()
 
@@ -332,6 +351,13 @@ def user_edit(user_id):
 
     return render_template('user_edit.html', user_id=user_id, form=form)
 
+@app.route('/users/delete/<int:user_id>')
+def user_delete(user_id):
+    deleted_user = User.query.get(user_id)
+    db.session.delete(deleted_user)
+    db.session.commit()
+    return redirect(url_for('users'))
+
 
 #### CANDIDATES MANAGEMENT
 @app.route('/candidates')
@@ -379,6 +405,33 @@ def candidates_new():
                 flash(err)
     return render_template('candidates_new.html', form=form, current_user=current_user)
 
+
+@app.route('/tasks/new', methods=['POST', 'GET'])
+def tasks_new():
+    candidates = db.session.query(Candidate).all()
+    candidates_list = [candidate.full_name for candidate in candidates]
+    users = db.session.query(User).all()
+    users_list = [user.full_name for user in users]
+    form = NewTaskForm()
+    print(candidates_list)
+    print(users)
+    form.candidate_id.choices = candidates_list
+    form.recipient.choices = users_list
+    if form.validate_on_submit():
+        chosen_recipient = User.query.filter_by(full_name=form.recipient.data).first()
+        chosen_candidate = Candidate.query.filter_by(full_name=form.candidate_id.data).first()
+        new_task = Task(
+            sender_id = current_user.id,
+            recipient_id = chosen_recipient.id,
+            candidate_id = chosen_candidate.id,
+            interviewers = form.interviewers.data,
+            role = form.role.data,
+            description = form.description.data,
+            date_sent = date.today(),
+        )
+        db.session.add(new_task)
+        db.session.commit()
+    return render_template('tasks_new.html', form=form)
 
 if __name__ == "__main__":
     app.run(debug=True)

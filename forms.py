@@ -52,3 +52,11 @@ class NewCandidateForm(FlaskForm):
     phone = StringField('Phone', validators=[DataRequired(message="Phone is required"), Length(min=10, message="Please make sure to add country code: eg. +48 573 341 312")])
     cv = FileField("Upload Candidate's CV")
     submit = SubmitField('Submit')
+
+class NewTaskForm(FlaskForm):
+    recipient = SelectField('Send to:', validators=[DataRequired(message="Send to is required")])
+    candidate_id = SelectField('Select Candidate:', validators=[DataRequired(message="Candidate is required")])
+    interviewers = StringField('List interviewers (separated by ","):', validators=[DataRequired(message="interviewers are required")])
+    role = StringField('Position:', validators=[DataRequired(message="Position is required")])
+    description = CKEditorField('Interview details:')
+    submit = SubmitField('Submit')

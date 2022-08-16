@@ -41,7 +41,7 @@
 					    <td>
 						    <a href="{{url_for('user_edit', user_id=user.id, form=form)}}">
 							    <i class="fa-solid fa-pen-to-square p-1" title="edit user"></i>
-						    <a href="url_for('user_new', form=form)">
+						    <a href="{{url_for('user_delete', user_id=user.id)}}">
 						        <i class="fa-solid fa-ban p-1" title="delete user"></i>
 					        </a>
 					    </td>
