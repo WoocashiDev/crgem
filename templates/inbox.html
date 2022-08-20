@@ -1,14 +1,24 @@
+{% import "bootstrap/wtf.html" as wtf %}
 {% include "header.html" %}
+
                 <main>
                     <div class="container-fluid px-4">
                         <h2 class="mt-4">Inbox</h2>
                         <ol class="breadcrumb mb-4">
                             <li class="breadcrumb-item active">Your tasks</li>
+                            {% with messages = get_flashed_messages() %}
+                                {% if messages %}
+                                    {% for message in messages %}
+                                    <li class="breadcrumb-item"><strong>{{ message }}</strong></li>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
                         </ol>
                         <hr>
                         <div class="row">
+                            {% if user_tasks %}
 	                        <div class="col-xl-3">
-                                <h3 class="mt-3">Pending</h3>
+                                <h3 class="mt-3"><i class="fa-solid fa-clock me-2"></i>Pending <small>({{ tasks_count.pending }})</small></h3>
                                 {% for task in user_tasks: %}
                                 {% if task.status == "pending" and task.is_archived == False %}
                                 <div class="card bg-warning text-white mb-4">
@@ -18,7 +28,7 @@
                                             <u>{{ task.role}}</u>
                                         </div>
                                         <div class="row mt-2">
-                                            <span class="small"> Sent by: {{task.from_user.full_name}}</span>
+                                            <span class="small"> Recruiter: {{task.from_user.full_name}}</span>
                                         </div>
                                     </div>
                                     <div class="card-footer d-flex align-items-center justify-content-between">
@@ -26,16 +36,16 @@
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
                                         <div class="d-flex align-items-center justify-content-end">
-                                            <a class="small text-white stretched-link ms-2" href="#" title="Return to sender">
+                                            <a class="small text-white ms-2" href="#" title="Return to sender">
                                             <i class="fa-solid fa-arrow-rotate-left"></i>
                                             </a>
-                                            <a class="small text-white stretched-link ms-2" href="#" title="Delegate">
+                                            <a class="small text-white ms-2" href="{{url_for('task_delegate', task_id=task.id)}}" title="Delegate">
                                                 <i class="fa-solid fa-paper-plane"></i>
                                             </a>
-                                            <a class="small text-white stretched-link ms-2" href="#" title="Check details">
+                                            <a class="small text-white ms-2" href="#" title="Check details">
                                                 <i class="fa-solid fa-magnifying-glass"></i>
                                             </a>
-                                            <a class="small text-white stretched-link ms-2" href="{{url_for('task_accept', task_id=task.id)}}" title="Accept task">
+                                            <a class="small text-white ms-2" href="{{url_for('task_accept', task_id=task.id)}}" title="Accept task">
                                                 <i class="fa-solid fa-circle-check"></i>
                                             </a>
                                         </div>
@@ -46,9 +56,14 @@
                                 {% endfor %}
                             </div>
                             <div class="col-xl-3">
-                                <h3 class="mt-3">Accepted</h3>
+
+                               
+                                <h3 class="mt-3"><i class="fa-solid fa-circle-check me-2"></i>Accepted <small>({{ tasks_count.accepted }})</small></h3>
+
                                 {% for task in user_tasks: %}
-                                {% if task.status == "accepted" and task.is_archived == False %}
+                                {% if task.status == "accepted" and task.is_archived == False: %}
+                                
+                                
                                 <div class="card bg-success text-white mb-4">
                                     <div class="card-body">
                                         <div class="row">
@@ -56,7 +71,7 @@
                                             <u>{{ task.role}}</u>
                                         </div>
                                         <div class="row mt-2">
-                                            <span class="small"> Sent by: {{task.from_user.full_name}}</span>
+                                            <span class="small"> Recruiter: {{task.from_user.full_name}}</span>
                                         </div>
                                     </div>
                                     <div class="card-footer d-flex align-items-center justify-content-between">
@@ -64,16 +79,16 @@
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
                                         <div class="d-flex align-items-center justify-content-end">
-                                            <a class="small text-white stretched-link ms-2" href="#" title="Return to sender">
+                                            <a class="small text-white ms-2" href="#" title="Return to sender">
                                                 <i class="fa-solid fa-arrow-rotate-left"></i>
                                             </a>
-                                            <a class="small text-white stretched-link ms-2" href="#" title="Delegate">
+                                            <a class="small text-white ms-2" href="{{url_for('task_delegate', task_id=task.id)}}" title="Delegate">
                                                 <i class="fa-solid fa-paper-plane"></i>
                                             </a>
-                                            <a class="small text-white stretched-link ms-2" href="#" title="Check details">
+                                            <a class="small text-white ms-2" href="#" title="Check details">
                                                 <i class="fa-solid fa-magnifying-glass"></i>
                                             </a>
-                                            <a class="small text-white stretched-link ms-2" href="#" title="Archive task">
+                                            <a class="small text-white ms-2" href="#" title="Archive task">
                                                 <i class="fa-solid fa-box-archive"></i>
                                             </a>
                                         </div>
@@ -83,30 +98,61 @@
                                 {% endfor %}
                             </div>
                             <div class="col-xl-3">
-                                <h3 class="mt-3">Delegated</h3>
+                                <h3 class="mt-3"><i class="fa-solid fa-paper-plane me-2"></i>Delegated <small>({{ tasks_count.delegated }})</small></h3>
+                                {% for task in delegated_tasks: %}
+                                {% if task.delegate_id == current_user.id and task.recipient_id != current_user.id and task.is_archived == False: %}
                                 <div class="card bg-primary text-white mb-4">
                                     <div class="card-body">
-                                        <span class="big">Candidate name</span>
-                                        -
-                                        <span class="big">Position</span>
+                                        <div class="row">
+                                            <strong>{{ task.candidate.full_name }}</strong>
+                                            <u>{{ task.role}}</u>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <span class="small"> Recruiter: {{task.from_user.full_name}}</span>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <span class="small"> Delegated to: {{task.to_user.full_name}}</span>
+                                        </div>
+                                        {% if task.status == "pending" %}
+                                        <div class="row mt-2">
+                                            <span class="small"> Status: <span class="bg-warning">{{task.status}}</span></span>
+                                        </div>
+                                        {% elif task.status == "accepted" %}
+                                        <div class="row mt-2">
+                                            <span class="small"> Status: <span class="bg-success">{{task.status}}</span></span>
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                    <div class="card-footer d-flex align-items-center justify-content-end">
-                                        <a class="small text-white stretched-link ms-2" href="#" title="Return to sender">
+                                    <div class="card-footer d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center justify-content-start">
+                                            <span class="small">{{task.date_sent}}</span>
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-end">
+                                            <a class="small text-white ms-2" href="#" title="Return to sender">
                                             <i class="fa-solid fa-arrow-rotate-left"></i>
-                                        </a>
-                                        <a class="small text-white stretched-link ms-2" href="#" title="Delegate">
-                                            <i class="fa-solid fa-paper-plane"></i>
-                                        </a>
-                                        <a class="small text-white stretched-link ms-2" href="#" title="Check details">
-                                            <i class="fa-solid fa-magnifying-glass"></i>
-                                        </a>
-                                        <a class="small text-white stretched-link ms-2" href="#" title="Accept task">
-                                            <i class="fa-solid fa-circle-check"></i>
-                                        </a>
+                                            </a>
+                                            <a class="small text-white ms-2" href="{{url_for('task_delegate', task_id=task.id)}}" title="Delegate">
+                                                <i class="fa-solid fa-paper-plane"></i>
+                                            </a>
+                                            <a class="small text-white ms-2" href="#" title="Check details">
+                                                <i class="fa-solid fa-magnifying-glass"></i>
+                                            </a>
+                                        </div>
+
                                     </div>
                                 </div>
-                            </div>
+                                {% endif %}
+                                {% endfor %}
+                            {% else %}
+                            <div>You don't have any tasks yet!</div>
+                            {% endif %}
                         </div>
                     </div>
                 </main>
+<!--MODAL-->
+{% block modal %}{% endblock %}
+
+{% block script %}{% endblock %}
+                
 {% include 'footer.html' %}
+

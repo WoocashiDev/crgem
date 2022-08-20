@@ -1,0 +1,45 @@
+{% extends 'inbox.html' %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% block modal %}
+<div class="modal" id="delegateModal" tabindex="-1" role="dialog" aria-labelledby="delegateModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="delegateModalLongTitle">Delegate task</h5>
+      </div>
+      <form method="post" action="" novalidate>
+      <div class="modal-body">
+        
+          {{ form.csrf_token }}
+          {{ form.delegate_id.label }} {{ form.delegate_id(class_="form-control") }}
+        
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul class="list-group mt-4">
+          {% for message in messages %}
+          <li class="list-group-item">{{ message }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+      </div>
+      <div class="modal-footer">
+        <a href="{{url_for('inbox')}}" class="btn btn-danger">Close</a>
+        {{ form.delegate_task(class_="btn btn-primary btn-block") }}
+      </div>
+        </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+
+<script>
+
+  $(document).ready(function(){
+    console.log('window is loaded')
+    $("#delegateModal").modal("show")
+  })
+</script>
+{% endblock %}
+

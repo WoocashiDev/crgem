@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm
+from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm, DelegateTaskForm
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
@@ -12,10 +12,10 @@ from datetime import date, datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.utils import secure_filename
+from flask_modals import Modal, render_template_modal
 
 os.environ['SECRET_KEY'] = 'TOP_SECRET_KEY!'
 # INITIATING APP EXTENSIONS
-
 app = Flask(__name__)
 csrf = CSRFProtect()
 csrf.init_app(app)
@@ -25,6 +25,9 @@ app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 login_manager = LoginManager()
 login_manager.init_app(app)
 Base = declarative_base()
+modal = Modal(app)
+
+
 
 # CONNECTING TO DB
 
@@ -49,6 +52,7 @@ class User(db.Model, UserMixin, Base):
     candidates = relationship("Candidate", back_populates="created_by")
     tasks_sent = relationship("Task", primaryjoin="User.id==Task.sender_id", back_populates="from_user")
     tasks_received = relationship("Task", primaryjoin="User.id==Task.recipient_id", back_populates="to_user")
+    tasks_delegated = relationship("Task", primaryjoin="User.id==Task.delegate_id", back_populates="delegated_by")
 
 class Template(db.Model, Base):
     __tablename__="templates"
@@ -97,6 +101,7 @@ class Task(db.Model, Base):
     id = db.Column(db.Integer, primary_key=True)
     sender_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     recipient_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    delegate_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     from_user = relationship("User", foreign_keys=[sender_id], back_populates="tasks_sent")
     to_user = relationship("User", foreign_keys=[recipient_id], back_populates="tasks_received")
     candidate_id = Column(Integer, ForeignKey('candidates.id'))
@@ -109,10 +114,11 @@ class Task(db.Model, Base):
     date_completed = db.Column(db.Date, nullable=True)
     status = db.Column(db.String, nullable=False)
     is_archived = db.Column(db.Boolean, nullable=False)
+    delegated_by = relationship("User", foreign_keys=[delegate_id], back_populates="tasks_delegated")
 
 db.create_all()
 
-# USER SESSION MANAGEMENT
+###################################### MANAGING USER SESSION ###########################################
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -120,8 +126,6 @@ def load_user(user_id):
         return User.query.get(user_id)
     except:
         return None
-
-# APP ROUTING
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
@@ -178,10 +182,8 @@ def register():
 def home():
     return render_template('index.html', current_user=current_user, is_authenticated=current_user.is_authenticated)
 
-########### MANAGING MESSAGE TEMPLATES
 
-
-# MANAGING COMMUNICATION TEMPLATES
+###################################### MANAGING COMMUNICATION TEMPLATES ###########################################
 
 @app.route('/templates')
 def templates():
@@ -225,7 +227,7 @@ def delete_template(template_id):
     db.session.commit()
     return redirect(url_for('templates'))
 
-##### PIPELINE MANAGEMENT
+###################################### MANAGING PIPELINE ###########################################
 
 @app.route('/pipeline')
 def pipeline():
@@ -292,7 +294,7 @@ def pipeline_delete(interview_id):
     return redirect(url_for('pipeline'))
 
 
-# MANAGING USERS FROM ADMIN PANEL
+###################################### MANAGING USERS IN ADMIN PANEL ###########################################
 
 @app.route('/users')
 def users():
@@ -361,7 +363,9 @@ def user_delete(user_id):
     return redirect(url_for('users'))
 
 
-#### CANDIDATES MANAGEMENT
+###################################### MANAGING Candidates #########################################
+
+
 @app.route('/candidates')
 def candidates():
     candidates = db.session.query(Candidate).all()
@@ -407,7 +411,7 @@ def candidates_new():
                 flash(err)
     return render_template('candidates_new.html', form=form, current_user=current_user)
 
-### MANAGING TASKS
+###################################### MANAGING TASKS ###########################################
 
 @app.route('/tasks/new', methods=['POST', 'GET'])
 def tasks_new():
@@ -426,6 +430,7 @@ def tasks_new():
         new_task = Task(
             sender_id=current_user.id,
             recipient_id=chosen_recipient.id,
+            delegate_id=chosen_recipient.id,
             candidate_id=chosen_candidate.id,
             interviewers=form.interviewers.data,
             role=form.role.data,
@@ -436,6 +441,7 @@ def tasks_new():
         )
         db.session.add(new_task)
         db.session.commit()
+        return redirect(url_for('inbox'))
     return render_template('tasks_new.html', form=form)
 
 @app.route('/inbox/task_accept/<int:task_id>', methods=['POST', 'GET'])
@@ -444,8 +450,8 @@ def task_accept(task_id):
     accepted_task.status = "accepted"
     accepted_task.date_received = date.today()
     new_interview = Interview(
-        first_name = accepted_task.candidate.first_name,
-        last_name = accepted_task.candidate.last_name,
+        first_name=accepted_task.candidate.first_name,
+        last_name=accepted_task.candidate.last_name,
         email=accepted_task.candidate.email,
         phone=accepted_task.candidate.phone,
         req_id="TBC",
@@ -458,13 +464,64 @@ def task_accept(task_id):
     )
     db.session.add(new_interview)
     db.session.commit()
+    flash(f"You have just accepted the task. Find more interview details in Pipeline section")
     return redirect(url_for('inbox'))
+
+##### GETTING TASKS COUNT ######
+
+def get_tasks_count():
+    delegations = Task.query.filter_by(delegate_id=current_user.id).all()
+    delegated_list = []
+    for task in delegations:
+        if task.delegate_id == current_user.id and task.recipient_id != current_user.id:
+            delegated_list.append(task)
+    delegated_count = len(delegated_list)
+    accepted_count = len(Task.query.filter_by(recipient_id=current_user.id, status="accepted").all())
+    pending_count = len(Task.query.filter_by(recipient_id=current_user.id, status="pending").all())
+    # Delegated tasks show the tasks delegated by current user
+
+    tasks_count = {
+        "accepted": accepted_count,
+        "pending": pending_count,
+        "delegated": delegated_count,
+    }
+    return tasks_count
+
+### GETTING LIST OF DELEGATED TASKS
+def get_delegations():
+    delegations = Task.query.filter_by(delegate_id=current_user.id).all()
+    return delegations
+
+@app.route('/inbox/delegate/<int:task_id>', methods=['POST', 'GET'])
+def task_delegate(task_id):
+    user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
+    form = DelegateTaskForm()
+    users = db.session.query(User).all()
+    users_list = [user.full_name for user in users]
+    form.delegate_id.choices = users_list
+    print(users_list)
+    if form.validate_on_submit():
+        chosen_recipient = User.query.filter_by(full_name=form.delegate_id.data).first()
+        delegated_task = Task.query.filter_by(id=task_id).first()
+        print(chosen_recipient.id)
+        print(current_user)
+        delegated_task.to_user = chosen_recipient
+        delegated_task.delegated_by = current_user
+        delegated_task.status = "pending"
+
+        db.session.commit()
+        flash(f"The task has been delegated to {chosen_recipient.full_name}")
+        return redirect(url_for('inbox'))
+    else:
+        for field_name, error_messages in form.errors.items():
+            for err in error_messages:
+                flash(err)
+    return render_template("modal_delegate.html", user_tasks=user_tasks, form=form, task_id=task_id, current_user=current_user, tasks_count=get_tasks_count(), delegated_tasks=get_delegations())
 
 @app.route('/inbox')
 def inbox():
     user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
-    print(user_tasks)
-    return render_template('inbox.html', user_tasks=user_tasks)
+    return render_template('inbox.html', user_tasks=user_tasks, tasks_count=get_tasks_count(), current_user=current_user, delegated_tasks=get_delegations())
 
 
 

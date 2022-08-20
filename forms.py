@@ -60,3 +60,7 @@ class NewTaskForm(FlaskForm):
     role = StringField('Position:', validators=[DataRequired(message="Position is required")])
     description = CKEditorField('Interview details:')
     submit = SubmitField('Submit')
+
+class DelegateTaskForm(FlaskForm):
+    delegate_id = SelectField('Select user to delegate the task:', validators=[DataRequired(message="User is required")])
+    delegate_task = SubmitField('Delegate')
