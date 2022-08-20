@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm, DelegateTaskForm
+from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm, DelegateTaskForm, InterviewEditForm
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
@@ -108,13 +108,17 @@ class Task(db.Model, Base):
     candidate = relationship("Candidate", foreign_keys=[candidate_id], back_populates="tasks")
     interviewers = db.Column(db.String, nullable=False)
     role = db.Column(db.String, nullable=False)
-    description = db.Column(db.Text, nullable=False)
+    recruiter_notes = db.Column(db.Text, nullable=True)
     date_sent = db.Column(db.Date, nullable=False)
     date_received = db.Column(db.Date, nullable=True)
     date_completed = db.Column(db.Date, nullable=True)
     status = db.Column(db.String, nullable=False)
     is_archived = db.Column(db.Boolean, nullable=False)
     delegated_by = relationship("User", foreign_keys=[delegate_id], back_populates="tasks_delegated")
+    interview_date = db.Column(db.Date, nullable=True)
+    interview_time = db.Column(db.Time, nullable=True)
+    scheduler_notes = db.Column(db.Text, nullable=True)
+    completion_time = db.Column(db.DateTime, nullable=True)
 
 db.create_all()
 
@@ -227,69 +231,81 @@ def delete_template(template_id):
     db.session.commit()
     return redirect(url_for('templates'))
 
-###################################### MANAGING PIPELINE ###########################################
+###################################### CREATING NEW TASKS FOR PIPELINE & INBOX ###########################################
 
+def create_new_task(form):
+    """pass over the form"""
+    chosen_recipient = User.query.filter_by(full_name=form.recipient.data).first()
+    chosen_candidate = Candidate.query.filter_by(full_name=form.candidate_id.data).first()
+    new_task = Task(
+        sender_id=current_user.id,
+        recipient_id=chosen_recipient.id,
+        delegate_id=chosen_recipient.id,
+        candidate_id=chosen_candidate.id,
+        interviewers=form.interviewers.data,
+        role=form.role.data,
+        date_sent=date.today(),
+        is_archived=False,
+        status="pending",
+    )
+    return new_task
+
+###################################### MANAGING PIPELINE ###########################################
+#### PIPELINE SHOWS ONLY ACCEPTED TASKS! ###
 @app.route('/pipeline')
 def pipeline():
-    interviews = db.session.query(Interview).all()
-    return render_template('pipeline.html', interviews=interviews, current_user=current_user, is_authenticated=current_user.is_authenticated)
+    tasks = Task.query.filter_by(status="accepted").all()
+    return render_template('pipeline.html', tasks=tasks, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 
 @app.route('/pipeline/new', methods=['GET', 'POST'])
 def pipeline_new():
     form = NewInterviewForm()
+    candidates = db.session.query(Candidate).all()
+    candidates_list = [candidate.full_name for candidate in candidates]
+    users = db.session.query(User).all()
+    users_list = [user.full_name for user in users]
+    print(candidates_list)
+    print(users)
+    form.candidate_id.choices = candidates_list
+    form.recipient.choices = users_list
     if form.validate_on_submit():
-        new_interview = Interview(
-            first_name=form.first_name.data,
-            last_name=form.last_name.data,
-            email=form.email.data,
-            phone=form.phone.data,
-            role=form.role.data,
-            req_id=form.req_id.data,
-            recruiter=form.recruiter.data,
-            interviewers=form.interviewers.data,
-            date=form.date.data,
-            time=form.time.data,
-            notes=form.notes.data,
-            owner_id=current_user.id,
-            creation_time=datetime.now(),
-            )
-        db.session.add(new_interview)
+        new_task = create_new_task(form)
+        new_task.scheduler_notes = form.scheduler_notes.data
+        new_task.interview_time = form.time.data
+        new_task.interview_date = form.date.data
+        new_task.date_received = datetime.now()
+        new_task.date_sent = datetime.now()
+        new_task.status = "accepted"
+        db.session.add(new_task)
         db.session.commit()
         return redirect(url_for('pipeline'))
     return render_template('pipeline_new.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 
-@app.route('/pipeline/edit/<int:interview_id>', methods=['POST', 'GET'])
-def pipeline_edit(interview_id):
-    interview = Interview.query.get(interview_id)
-    form = NewInterviewForm(
-        first_name=interview.first_name,
-        last_name=interview.last_name,
-        email=interview.email,
-        phone=interview.phone,
-        role=interview.role,
-        req_id=interview.req_id,
-        recruiter=interview.recruiter,
-        interviewers=interview.interviewers,
-        date=interview.date,
-        time=interview.time,
-        notes=interview.notes,
+@app.route('/pipeline/edit/<int:task_id>', methods=['POST', 'GET'])
+def pipeline_edit(task_id):
+    task = Task.query.get(task_id)
+    form = InterviewEditForm(
+        role=task.role,
+        interviewers=task.interviewers,
+        date=task.interview_date,
+        time=task.interview_time,
+        scheduler_notes=task.scheduler_notes,
     )
     if form.validate_on_submit():
         for key in form.__dict__.keys():
-            if key in interview.__dict__.keys():
-                setattr(interview, key, form[key].data)
-        interview.creation_time = datetime.now()
+            if key in task.__dict__.keys():
+                setattr(task, key, form[key].data)
         db.session.commit()
         return redirect(url_for('pipeline'))
-    return render_template('pipeline_edit.html', form=form, interview_id=interview_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
+    return render_template('pipeline_edit.html', form=form, task_id=task_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 
-@app.route('/pipeline/delete/<int:interview_id>')
-def pipeline_delete(interview_id):
-    interview_to_delete = Interview.query.get(interview_id)
-    db.session.delete(interview_to_delete)
+@app.route('/pipeline/delete/<int:task_id>')
+def pipeline_delete(task_id):
+    task_to_delete = Task.query.get(task_id)
+    db.session.delete(task_to_delete)
     db.session.commit()
     return redirect(url_for('pipeline'))
 
@@ -411,7 +427,6 @@ def candidates_new():
                 flash(err)
     return render_template('candidates_new.html', form=form, current_user=current_user)
 
-###################################### MANAGING TASKS ###########################################
 
 @app.route('/tasks/new', methods=['POST', 'GET'])
 def tasks_new():
@@ -425,20 +440,8 @@ def tasks_new():
     form.candidate_id.choices = candidates_list
     form.recipient.choices = users_list
     if form.validate_on_submit():
-        chosen_recipient = User.query.filter_by(full_name=form.recipient.data).first()
-        chosen_candidate = Candidate.query.filter_by(full_name=form.candidate_id.data).first()
-        new_task = Task(
-            sender_id=current_user.id,
-            recipient_id=chosen_recipient.id,
-            delegate_id=chosen_recipient.id,
-            candidate_id=chosen_candidate.id,
-            interviewers=form.interviewers.data,
-            role=form.role.data,
-            description=form.description.data,
-            date_sent=date.today(),
-            is_archived=False,
-            status="pending",
-        )
+        new_task = create_new_task(form)
+        new_task.recruiter_notes = form.recruiter_notes.data
         db.session.add(new_task)
         db.session.commit()
         return redirect(url_for('inbox'))
@@ -449,20 +452,6 @@ def task_accept(task_id):
     accepted_task = Task.query.filter_by(id=task_id).first()
     accepted_task.status = "accepted"
     accepted_task.date_received = date.today()
-    new_interview = Interview(
-        first_name=accepted_task.candidate.first_name,
-        last_name=accepted_task.candidate.last_name,
-        email=accepted_task.candidate.email,
-        phone=accepted_task.candidate.phone,
-        req_id="TBC",
-        role=accepted_task.role,
-        recruiter=accepted_task.from_user.full_name,
-        interviewers=accepted_task.interviewers,
-        notes=accepted_task.description,
-        owner_id=accepted_task.to_user.id,
-        creation_time=datetime.now(),
-    )
-    db.session.add(new_interview)
     db.session.commit()
     flash(f"You have just accepted the task. Find more interview details in Pipeline section")
     return redirect(url_for('inbox'))

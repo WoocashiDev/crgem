@@ -15,7 +15,7 @@
 				</div>
 			</div>
 			<hr>
-			{% if interviews|length == 0 %}
+			{% if tasks|length == 0 %}
 			<p>You don't have interviews in your pipeline. Please click on Add Interview button above to proceed with your first interview scheduling. Enjoy working with our CRM!</p>
 			{% else %}
 			<table class="table">
@@ -28,7 +28,6 @@
 				      <th scope="col">Email</th>
 					    <th scope="col">Phone</th>
 					    <th scope="col">Role</th>
-					    <th scope="col">Req ID</th>
 					    <th scope="col">Recruiter</th>
 					    <th scope="col">Interviewers</th>
 					    <th scope="col">Date</th>
@@ -37,25 +36,24 @@
 				    </tr>
 				  </thead>
 				  <tbody>
-				  {% for interview in interviews %}
+				  {% for task in tasks %}
 				    <tr>
-				      <th scope="row">{{interview.id}}</th>
-					    <td>{{interview.created_by.full_name}}</td>
-				      <td>{{interview.first_name}}</td>
-				      <td>{{interview.last_name}}</td>
-				      <td>{{interview.email}}</td>
-					    <td>{{interview.phone}}</td>
-					    <td>{{interview.role}}</td>
-					    <td>{{interview.req_id}}</td>
-					    <td>{{interview.recruiter}}</td>
-					    <td>{{interview.interviewers}}</td>
-					    <td>{{interview.date}}</td>
-					    <td>{{interview.time}}</td>
+				      <th scope="row">{{task.id}}</th>
+					    <td>{{task.to_user.full_name}}</td>
+				      <td>{{task.candidate.first_name}}</td>
+				      <td>{{task.candidate.last_name}}</td>
+				      <td>{{task.candidate.email}}</td>
+					    <td>{{task.candidate.phone}}</td>
+					    <td>{{task.role}}</td>
+					    <td>{{task.from_user.full_name}}</td>
+					    <td>{{task.interviewers}}</td>
+					    <td>{{task.interview_date}}</td>
+					    <td>{{task.interview_time}}</td>
 					    <td>
-						    <a href="{{url_for('pipeline_edit', interview_id=interview.id)}}">
-							    <i class="fa-solid fa-pen-to-square p-1" title="edit template"></i>
-						    <a href="{{url_for('pipeline_delete', interview_id=interview.id)}}">
-						        <i class="fa-solid fa-ban p-1" title="delete template"></i>
+						    <a class="text-decoration-none" href="{{url_for('pipeline_edit', task_id=task.id)}}">
+							    <i class="fa-solid fa-pen-to-square p-1" title="edit interview"></i>
+						    <a class="text-decoration-none" href="{{url_for('pipeline_delete', task_id=task.id)}}">
+						        <i class="fa-solid fa-ban p-1" title="delete interview"></i>
 					        </a>
 					    </td>
 				    </tr>

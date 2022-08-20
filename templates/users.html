@@ -39,9 +39,9 @@
 					    <td>{{user.phone}}</td>
 					    <td>{{user.type}}</td>
 					    <td>
-						    <a href="{{url_for('user_edit', user_id=user.id, form=form)}}">
+						    <a class="text-decoration-none" href="{{url_for('user_edit', user_id=user.id, form=form)}}">
 							    <i class="fa-solid fa-pen-to-square p-1" title="edit user"></i>
-						    <a href="{{url_for('user_delete', user_id=user.id)}}">
+						    <a class="text-decoration-none" href="{{url_for('user_delete', user_id=user.id)}}">
 						        <i class="fa-solid fa-ban p-1" title="delete user"></i>
 					        </a>
 					    </td>
