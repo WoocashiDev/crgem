@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, abort, request
+from flask import Flask, render_template, redirect, url_for, flash, abort, request, send_from_directory
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm, DelegateTaskForm, InterviewEditForm
@@ -289,8 +289,8 @@ def pipeline_edit(task_id):
     form = InterviewEditForm(
         role=task.role,
         interviewers=task.interviewers,
-        date=task.interview_date,
-        time=task.interview_time,
+        interview_date=task.interview_date,
+        interview_time=task.interview_time,
         scheduler_notes=task.scheduler_notes,
     )
     if form.validate_on_submit():
@@ -309,6 +309,94 @@ def pipeline_delete(task_id):
     db.session.commit()
     return redirect(url_for('pipeline'))
 
+
+###################################### MANAGING INBOX ###########################################
+##### INBOX SHOWS ALL PENDING, ACCEPTED AND DELEGATED TASKS BY CURRENT USER. !!!! IT DOES NOT SHOW ARCHIVED ONES THOUGH !!!!
+
+@app.route('/tasks/new', methods=['POST', 'GET'])
+def tasks_new():
+    candidates = db.session.query(Candidate).all()
+    candidates_list = [candidate.full_name for candidate in candidates]
+    users = db.session.query(User).all()
+    users_list = [user.full_name for user in users]
+    form = NewTaskForm()
+    print(candidates_list)
+    print(users)
+    form.candidate_id.choices = candidates_list
+    form.recipient.choices = users_list
+    if form.validate_on_submit():
+        new_task = create_new_task(form)
+        new_task.recruiter_notes = form.recruiter_notes.data
+        db.session.add(new_task)
+        db.session.commit()
+        return redirect(url_for('inbox'))
+    return render_template('tasks_new.html', form=form)
+
+@app.route('/inbox/task_accept/<int:task_id>', methods=['POST', 'GET'])
+def task_accept(task_id):
+    accepted_task = Task.query.filter_by(id=task_id).first()
+    accepted_task.status = "accepted"
+    accepted_task.date_received = date.today()
+    db.session.commit()
+    flash(f"You have just accepted the task. Find more interview details in Pipeline section")
+    return redirect(url_for('inbox'))
+
+
+def get_tasks_count():
+    delegations = Task.query.filter_by(delegate_id=current_user.id).all()
+    delegated_list = []
+    for task in delegations:
+        if task.delegate_id == current_user.id and task.recipient_id != current_user.id:
+            delegated_list.append(task)
+    delegated_count = len(delegated_list)
+    accepted_count = len(Task.query.filter_by(recipient_id=current_user.id, status="accepted").all())
+    pending_count = len(Task.query.filter_by(recipient_id=current_user.id, status="pending").all())
+    # Delegated tasks show the tasks delegated by current user
+
+    tasks_count = {
+        "accepted": accepted_count,
+        "pending": pending_count,
+        "delegated": delegated_count,
+    }
+    return tasks_count
+
+### GETTING LIST OF DELEGATED TASKS
+def get_delegations():
+    delegations = Task.query.filter_by(delegate_id=current_user.id).all()
+    return delegations
+
+@app.route('/inbox/delegate/<int:task_id>', methods=['POST', 'GET'])
+def task_delegate(task_id):
+    user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
+    form = DelegateTaskForm()
+    users = db.session.query(User).all()
+    users_list = [user.full_name for user in users]
+    form.delegate_id.choices = users_list
+    print(users_list)
+    if form.validate_on_submit():
+        chosen_recipient = User.query.filter_by(full_name=form.delegate_id.data).first()
+        delegated_task = Task.query.filter_by(id=task_id).first()
+        print(chosen_recipient.id)
+        print(current_user)
+        delegated_task.to_user = chosen_recipient
+        delegated_task.delegated_by = current_user
+        delegated_task.status = "pending"
+
+        db.session.commit()
+        flash(f"The task has been delegated to {chosen_recipient.full_name}")
+        return redirect(url_for('inbox'))
+    else:
+        for field_name, error_messages in form.errors.items():
+            for err in error_messages:
+                flash(err)
+    return render_template("modal_delegate.html", user_tasks=user_tasks, form=form, task_id=task_id, current_user=current_user, tasks_count=get_tasks_count(), delegated_tasks=get_delegations())
+
+######### CHECKING TASKS DETAILS ###########
+
+@app.route('/check_tasks_details/<int:task_id>')
+def check_task_details(task_id):
+    task = Task.query.get(task_id)
+    return render_template('view_task.html', task_id=task_id, task=task)
 
 ###################################### MANAGING USERS IN ADMIN PANEL ###########################################
 
@@ -427,85 +515,12 @@ def candidates_new():
                 flash(err)
     return render_template('candidates_new.html', form=form, current_user=current_user)
 
+@app.route('/candidate/show_cv/<int:candidate_id>')
+def show_cv(candidate_id):
+    candidate = Candidate.query.get(candidate_id)
+    candidate_cv = candidate.cv
+    return send_from_directory('Uploads/CVs', candidate_cv)
 
-@app.route('/tasks/new', methods=['POST', 'GET'])
-def tasks_new():
-    candidates = db.session.query(Candidate).all()
-    candidates_list = [candidate.full_name for candidate in candidates]
-    users = db.session.query(User).all()
-    users_list = [user.full_name for user in users]
-    form = NewTaskForm()
-    print(candidates_list)
-    print(users)
-    form.candidate_id.choices = candidates_list
-    form.recipient.choices = users_list
-    if form.validate_on_submit():
-        new_task = create_new_task(form)
-        new_task.recruiter_notes = form.recruiter_notes.data
-        db.session.add(new_task)
-        db.session.commit()
-        return redirect(url_for('inbox'))
-    return render_template('tasks_new.html', form=form)
-
-@app.route('/inbox/task_accept/<int:task_id>', methods=['POST', 'GET'])
-def task_accept(task_id):
-    accepted_task = Task.query.filter_by(id=task_id).first()
-    accepted_task.status = "accepted"
-    accepted_task.date_received = date.today()
-    db.session.commit()
-    flash(f"You have just accepted the task. Find more interview details in Pipeline section")
-    return redirect(url_for('inbox'))
-
-##### GETTING TASKS COUNT ######
-
-def get_tasks_count():
-    delegations = Task.query.filter_by(delegate_id=current_user.id).all()
-    delegated_list = []
-    for task in delegations:
-        if task.delegate_id == current_user.id and task.recipient_id != current_user.id:
-            delegated_list.append(task)
-    delegated_count = len(delegated_list)
-    accepted_count = len(Task.query.filter_by(recipient_id=current_user.id, status="accepted").all())
-    pending_count = len(Task.query.filter_by(recipient_id=current_user.id, status="pending").all())
-    # Delegated tasks show the tasks delegated by current user
-
-    tasks_count = {
-        "accepted": accepted_count,
-        "pending": pending_count,
-        "delegated": delegated_count,
-    }
-    return tasks_count
-
-### GETTING LIST OF DELEGATED TASKS
-def get_delegations():
-    delegations = Task.query.filter_by(delegate_id=current_user.id).all()
-    return delegations
-
-@app.route('/inbox/delegate/<int:task_id>', methods=['POST', 'GET'])
-def task_delegate(task_id):
-    user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
-    form = DelegateTaskForm()
-    users = db.session.query(User).all()
-    users_list = [user.full_name for user in users]
-    form.delegate_id.choices = users_list
-    print(users_list)
-    if form.validate_on_submit():
-        chosen_recipient = User.query.filter_by(full_name=form.delegate_id.data).first()
-        delegated_task = Task.query.filter_by(id=task_id).first()
-        print(chosen_recipient.id)
-        print(current_user)
-        delegated_task.to_user = chosen_recipient
-        delegated_task.delegated_by = current_user
-        delegated_task.status = "pending"
-
-        db.session.commit()
-        flash(f"The task has been delegated to {chosen_recipient.full_name}")
-        return redirect(url_for('inbox'))
-    else:
-        for field_name, error_messages in form.errors.items():
-            for err in error_messages:
-                flash(err)
-    return render_template("modal_delegate.html", user_tasks=user_tasks, form=form, task_id=task_id, current_user=current_user, tasks_count=get_tasks_count(), delegated_tasks=get_delegations())
 
 @app.route('/inbox')
 def inbox():

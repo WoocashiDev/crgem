@@ -31,7 +31,7 @@
                                             <span class="small"> Recruiter: {{task.from_user.full_name}}</span>
                                         </div>
                                     </div>
-                                    <div class="card-footer d-flex align-items-center justify-content-between">
+                                    <div class="card-footer d-flex align-items-center justify-content-between bg-dark">
                                         <div class="d-flex align-items-center justify-content-start">
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
@@ -42,7 +42,7 @@
                                             <a class="small text-white ms-2" href="{{url_for('task_delegate', task_id=task.id)}}" title="Delegate">
                                                 <i class="fa-solid fa-paper-plane"></i>
                                             </a>
-                                            <a class="small text-white ms-2" href="#" title="Check details">
+                                            <a class="small text-white ms-2" href="{{url_for('check_task_details', task_id=task.id)}}" title="Check details">
                                                 <i class="fa-solid fa-magnifying-glass"></i>
                                             </a>
                                             <a class="small text-white ms-2" href="{{url_for('task_accept', task_id=task.id)}}" title="Accept task">
@@ -74,7 +74,7 @@
                                             <span class="small"> Recruiter: {{task.from_user.full_name}}</span>
                                         </div>
                                     </div>
-                                    <div class="card-footer d-flex align-items-center justify-content-between">
+                                    <div class="card-footer d-flex align-items-center justify-content-between bg-dark">
                                         <div class="d-flex align-items-center justify-content-start">
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
@@ -85,7 +85,7 @@
                                             <a class="small text-white ms-2" href="{{url_for('task_delegate', task_id=task.id)}}" title="Delegate">
                                                 <i class="fa-solid fa-paper-plane"></i>
                                             </a>
-                                            <a class="small text-white ms-2" href="#" title="Check details">
+                                            <a class="small text-white ms-2" href="{{url_for('check_task_details', task_id=task.id)}}" title="Check details">
                                                 <i class="fa-solid fa-magnifying-glass"></i>
                                             </a>
                                             <a class="small text-white ms-2" href="#" title="Archive task">
@@ -123,7 +123,7 @@
                                         </div>
                                         {% endif %}
                                     </div>
-                                    <div class="card-footer d-flex align-items-center justify-content-between">
+                                    <div class="card-footer d-flex align-items-center justify-content-between bg-dark">
                                         <div class="d-flex align-items-center justify-content-start">
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
@@ -134,7 +134,7 @@
                                             <a class="small text-white ms-2" href="{{url_for('task_delegate', task_id=task.id)}}" title="Delegate">
                                                 <i class="fa-solid fa-paper-plane"></i>
                                             </a>
-                                            <a class="small text-white ms-2" href="#" title="Check details">
+                                            <a class="small text-white ms-2" href="{{url_for('check_task_details', task_id=task.id)}}" title="Check details">
                                                 <i class="fa-solid fa-magnifying-glass"></i>
                                             </a>
                                         </div>

@@ -44,8 +44,8 @@ class NewInterviewForm(FlaskForm):
 class InterviewEditForm(FlaskForm):
     role = StringField('Role', validators=[DataRequired(message="Role is required")])
     interviewers = StringField('List interviewers (separated by ","):', validators=[DataRequired(message="interviewers are required")])
-    date = DateField('Interview Date')
-    time = TimeField('Interview Time')
+    interview_date = DateField('Interview Date')
+    interview_time = TimeField('Interview Time')
     scheduler_notes = CKEditorField('Notes', validators=[DataRequired(message="By adding notes you make your and your colleagues' life easier!")])
     add = SubmitField('Add')
 

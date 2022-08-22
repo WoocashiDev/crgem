@@ -132,7 +132,7 @@
                             </a>
                         </div>
                     </div>
-                    {% if is_authenticated %}
+                    {% if current_user %}
                     <div class="sb-sidenav-footer">
                         <div class="small">Logged in as:</div>
                         {{current_user.first_name}} {{current_user.last_name}}
