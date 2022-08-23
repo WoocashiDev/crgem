@@ -6,12 +6,14 @@
 	<main>
 		<div class="container mt-4">
 			<div class="row d-flex align-items-center">
-				<div class="col-lg-6">
-					<h2>Candidates</h2>
-				</div>
-			
-				<div class="col-lg-6 d-flex justify-content-end">
-					<a class="btn btn-primary" href="{{url_for('candidates_new', form=form)}}">New Candidate</a>
+				<div class="row d-flex justify-content-between">
+					<div class="col">
+						<h2 class="mt-4">Candidates</h2>
+					</div>
+					<div class="col d-flex justify-content-end mt-4">
+						<span><a class="btn btn-primary ms-2" href="{{url_for('candidates_new', form=form)}}"><small>New Candidate</small></a></span>
+						<span><a class="btn btn-dark ms-2" href="javascript:history.back()"><small>Previous Page</small></a></span>
+					</div>
 				</div>
 			</div>
 			<hr>

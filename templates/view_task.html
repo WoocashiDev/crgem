@@ -1,10 +1,18 @@
 {% include "header.html" %}
                 <main>
                     <div class="container-fluid px-4">
-                        <h2 class="mt-4"><small>Interview with </small><strong>{{ task.candidate.full_name }}</strong></h2>
-                        <ol class="breadcrumb mb-4">
-                            <li class="breadcrumb-item active">for the role of <strong>{{task.role}}</strong></li>
-                        </ol>
+                        <div class="row d-flex justify-content-between">
+                            <div class="col">
+                                <h2 class="mt-4"><small>Interview with </small><strong>{{ task.candidate.full_name }}</strong></h2>
+                                <ol class="breadcrumb mb-4">
+                                    <li class="breadcrumb-item active">for the role of <strong>{{task.role}}</strong></li>
+                                </ol>
+                            </div>
+                            <div class="col d-flex justify-content-end mt-4">
+                                <span><a class="btn btn-primary ms-2" href="{{url_for('inbox')}}"><small>Inbox</small></a></span>
+                                <span><a class="btn btn-dark ms-2" href="javascript:history.back()"><small>Previous Page</small></a></span>
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="col-xl-6 col-md-6">
                                 <div class="accordion" id="accordionInterviewDetails">
@@ -140,7 +148,9 @@
                                 <h4>Actions</h4>
                                 <div class="mt-2">
                                     <a href="" class="btn btn-primary me-2">Schedule</a>
+                                    {% if task.candidate.cv != "" %}
                                     <a href="{{url_for('show_cv', candidate_id=task.candidate.id)}}" class="btn btn-primary me-2" target="_blank">Show CV</a>
+                                    {% endif %}
                                     <a href="" class="btn btn-primary me-2">Candidate Profile</a>
                                 </div>
                             </div>

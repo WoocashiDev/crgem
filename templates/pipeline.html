@@ -5,13 +5,13 @@
 
 	<main>
 		<div class="container mt-4">
-			<div class="row d-flex align-items-center">
-				<div class="col-lg-6">
-					<h2>My Pipeline</h2>
+			<div class="row d-flex justify-content-between">
+				<div class="col">
+					<h2 class="mt-4">My Pipeline</h2>
 				</div>
-			
-				<div class="col-lg-6 d-flex justify-content-end">
-					<a class="btn btn-primary" href="{{url_for('pipeline_new', form=form)}}">Add Interview</a>
+				<div class="col d-flex justify-content-end mt-4">
+					<span><a class="btn btn-primary ms-2" href="{{url_for('pipeline_new', form=form)}}"><small>Add Interview</small></a></span>
+					<span><a class="btn btn-dark ms-2" href="javascript:history.back()"><small>Previous Page</small></a></span>
 				</div>
 			</div>
 			<hr>
@@ -50,11 +50,18 @@
 					    <td>{{task.interview_date}}</td>
 					    <td>{{task.interview_time}}</td>
 					    <td>
-						    <a class="text-decoration-none" href="{{url_for('pipeline_edit', task_id=task.id)}}">
-							    <i class="fa-solid fa-pen-to-square p-1" title="edit interview"></i>
-						    <a class="text-decoration-none" href="{{url_for('pipeline_delete', task_id=task.id)}}">
-						        <i class="fa-solid fa-ban p-1" title="delete interview"></i>
-					        </a>
+						    <div class="dropdown">
+							  <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+							    Action
+							  </button>
+							  <ul class="dropdown-menu">
+								  <li><a class="text-decoration-none d-flex align-items-center ms-2" href="{{url_for('check_task_details', task_id=task.id)}}"><i class="fa-solid fa-magnifying-glass me-1"></i>Check Details</a></li>
+								  <li><hr class="dropdown-divider"></li>
+								  <li><a class="text-decoration-none d-flex ms-2" href="{{url_for('pipeline_edit', task_id=task.id)}}"><i class="fa-solid fa-pen-to-square p-1"></i>Update Details</a></li>
+								  <li><hr class="dropdown-divider"></li>
+								  <li><a class="text-decoration-none d-flex ms-2" href="{{url_for('pipeline_delete', task_id=task.id)}}"><i class="fa-solid fa-ban p-1"></i>Delete Interview</a></li>
+							  </ul>
+							</div>
 					    </td>
 				    </tr>
 				  {% endfor %}

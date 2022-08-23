@@ -3,17 +3,24 @@
 
                 <main>
                     <div class="container-fluid px-4">
-                        <h2 class="mt-4">Inbox</h2>
-                        <ol class="breadcrumb mb-4">
-                            <li class="breadcrumb-item active">Your tasks</li>
-                            {% with messages = get_flashed_messages() %}
-                                {% if messages %}
-                                    {% for message in messages %}
-                                    <li class="breadcrumb-item"><strong>{{ message }}</strong></li>
-                                    {% endfor %}
-                                {% endif %}
-                            {% endwith %}
-                        </ol>
+                        <div class="row d-flex justify-content-between">
+                            <div class="col">
+                                <h2 class="mt-4">Inbox</h2>
+                                <ol class="breadcrumb mb-4">
+                                    <li class="breadcrumb-item active">Your tasks</li>
+                                    {% with messages = get_flashed_messages() %}
+                                        {% if messages %}
+                                            {% for message in messages %}
+                                            <li class="breadcrumb-item"><strong>{{ message }}</strong></li>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endwith %}
+                                </ol>
+                            </div>
+                            <div class="col d-flex justify-content-end">
+                                <span><a class="btn btn-dark m-4" href="javascript:history.back()"><small>Previous Page</small></a></span>
+                            </div>
+                        </div>
                         <hr>
                         <div class="row">
                             {% if user_tasks %}
@@ -31,7 +38,7 @@
                                             <span class="small"> Recruiter: {{task.from_user.full_name}}</span>
                                         </div>
                                     </div>
-                                    <div class="card-footer d-flex align-items-center justify-content-between bg-dark">
+                                    <div class="card-footer d-flex align-items-center justify-content-between bg-secondary">
                                         <div class="d-flex align-items-center justify-content-start">
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
@@ -74,7 +81,7 @@
                                             <span class="small"> Recruiter: {{task.from_user.full_name}}</span>
                                         </div>
                                     </div>
-                                    <div class="card-footer d-flex align-items-center justify-content-between bg-dark">
+                                    <div class="card-footer d-flex align-items-center justify-content-between bg-secondary">
                                         <div class="d-flex align-items-center justify-content-start">
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
@@ -123,7 +130,7 @@
                                         </div>
                                         {% endif %}
                                     </div>
-                                    <div class="card-footer d-flex align-items-center justify-content-between bg-dark">
+                                    <div class="card-footer d-flex align-items-center justify-content-between bg-secondary">
                                         <div class="d-flex align-items-center justify-content-start">
                                             <span class="small">{{task.date_sent}}</span>
                                         </div>
@@ -147,6 +154,7 @@
                             <div>You don't have any tasks yet!</div>
                             {% endif %}
                         </div>
+                    </div>
                     </div>
                 </main>
 <!--MODAL-->
