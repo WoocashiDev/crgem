@@ -96,7 +96,7 @@
                                   <div class="accordion-item">
                                     <h2 class="accordion-header" id="headingThree">
                                       <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                        Task Progress
+                                        Task Progress:
                                           {% if task.status == "pending": %}
                                           <small class="ms-2 bg-warning"> ({{ task.status }})</small>
                                           {% elif task.status == "accepted" %}
@@ -107,7 +107,7 @@
                                     <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionInterviewDetails">
                                       <div class="accordion-body">
                                           <table class="table">
-                                              <tbody>
+                                              <tbody class="bg-light">
                                                 <tr>
                                                   <th scope="row">Coordinator assigned:</th>
                                                   <td>{{ task.to_user.full_name }}</td>
@@ -134,20 +134,67 @@
                                                   <th scope="row">Date completed:</th>
                                                   <td colspan="2">{{ task.date_completed }}</td>
                                                 </tr>
+                                                {% if task.scheduler_notes %}
                                                 <tr>
                                                   <td colspan="3">{{ task.scheduler_notes|safe }}</td>
                                                 </tr>
+                                                {% endif %}
                                               </tbody>
                                             </table>
                                       </div>
                                     </div>
+                                    
+                                  </div>
+                                    <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingFour">
+                                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                        Messages related:
+                                          {% if messages and messages|length != 0: %}
+                                          <strong class="ms-2">({{ messages|length }})</strong>
+                                          {% else %}
+                                          <strong class="ms-2">(0)</strong>
+                                          {% endif %}
+                                      </button>
+                                    </h2>
+                                    <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#accordionInterviewDetails">
+                                      <div class="accordion-body">
+                                          {% for message in messages %}
+                                          <table class="table">
+                                              <tbody>
+                                                <tr class="bg-light">
+                                                  <th scope="row">Sent by:</th>
+                                                  <td>{{ message.user.full_name }}</td>
+                                                </tr>
+                                                <tr class="bg-light">
+                                                  <th scope="row">Date:</th>
+                                                  <td>{{ message.sent_date }}</td>
+                                                </tr>
+                                                <tr class="bg-light">
+                                                  <th scope="row">Time:</th>
+                                                  <td colspan="2">{{ message.sent_time.strftime("%H:%M") }}</td>
+                                                </tr>
+                                                <tr class="bg-light">
+                                                  <th scope="row">Subject:</th>
+                                                  <td colspan="2">{{ message.subject }}</td>
+                                                </tr>
+                                                <tr>
+                                                  <td colspan="2">{{ message.text_content|safe }}</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          <hr>
+                                          {% endfor %}
+                                          
+                                      </div>
+                                    </div>
+                                    
                                   </div>
                                 </div>
                             </div>
                             <div class="col-xl-6 col-md-6">
                                 <h4>Actions</h4>
                                 <div class="mt-2">
-                                    <a href="" class="btn btn-primary me-2">Schedule</a>
+                                    <a href="{{url_for('send_message', task_id=task.id)}}" class="btn btn-primary me-2">Schedule</a>
                                     {% if task.candidate.cv != "" %}
                                     <a href="{{url_for('show_cv', candidate_id=task.candidate.id)}}" class="btn btn-primary me-2" target="_blank">Show CV</a>
                                     {% endif %}

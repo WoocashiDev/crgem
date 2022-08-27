@@ -17,11 +17,27 @@
 			</div>
 			<hr>
 			<div class="mt-4">
-				{{ form.csrf_token }}
-				{{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
+				<form method="post" action="" novalidate>
+					{{ form.csrf_token }}
+					<div class="form mb-4">
+						{{ form.name.label }} {{ form.name(class_="form-control") }}
+					</div>
+					<span>Select short codes to get hold of a data from your tracker</span>
+					<div class="d-flex flex-wrap mb-4">
+						{% for key, value in short_codes.items() %}
+						<button type="button" class="btn btn-outline-primary mt-2 mb-2 me-2 short-code-button" data-shortcode="{{value}}">{{key}}</button>
+						
+						{% endfor %}
+					</div>
+					<div class="form mb-4">
+						{{ form.text.label }}
+						{{ form.text(class_="form-control") }} {{ form.submit(class_="btn btn-primary btn-block") }}
+					</div>
+				</form>
 			</div>
 		</div>
 	</main>
 	{{ ckeditor.load() }}
 	{{ ckeditor.config(name='text') }}
 {% include 'footer.html' %}
+<script src="{{url_for('static', filename='js/template-short-codes.js')}}"></script>

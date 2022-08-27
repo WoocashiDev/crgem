@@ -22,18 +22,23 @@
 					<div class="form mb-4">
 						{{ form.name.label }} {{ form.name(class_="form-control") }}
 					</div>
-					<div class="form mb-4">
-						{{ form.text.label }} {{ form.text(class_="form-control") }}
+					<span>Select short codes to get hold of a data from your tracker</span>
+					<div class="d-flex flex-wrap mb-4">
+						{% for key, value in short_codes.items() %}
+						<button type="button" class="btn btn-outline-primary mt-2 mb-2 me-2 short-code-button" data-shortcode='{{value}}'>{{key}}</button>
+						
+						{% endfor %}
 					</div>
-					<div class="mt-4 mb-0">
-						{{ form.submit(class_="btn btn-primary btn-block") }}
+					<div class="form mb-4">
+						{{ form.text.label }}
+						{{ form.text(class_="form-control") }} {{ form.submit(class_="btn btn-primary btn-block") }}
 					</div>
 				</form>
-<!--				{{ form.csrf_token }}-->
-<!--				{{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}-->
 			</div>
 		</div>
 	</main>
 	{{ ckeditor.load() }}
 	{{ ckeditor.config(name='text') }}
+
 {% include 'footer.html' %}
+<script src="../static/js/template-short-codes.js"></script>

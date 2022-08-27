@@ -52,3 +52,5 @@ var myLineChart = new Chart(ctx, {
     }
   }
 });
+
+const test = {{task.data}}

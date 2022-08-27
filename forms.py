@@ -1,7 +1,12 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField, DateField, TimeField, SelectField, FileField, MultipleFileField
 from flask_ckeditor import CKEditorField
-from wtforms.validators import DataRequired, URL, Email, Length
+from wtforms.validators import DataRequired, URL, Email, Length, NoneOf
+
+short_code = {
+    "user_first_name": "{current_user.first_name}",
+    "user_full_name": "{current_user.full_name}"
+}
 
 class NewUserForm(FlaskForm):
     first_name = StringField('First Name', validators=[DataRequired(message="First Name is required")])
@@ -28,7 +33,7 @@ class LoginForm(FlaskForm):
 
 class NewTemplateForm(FlaskForm):
     name = StringField('Template name', validators=[DataRequired()])
-    text = CKEditorField('Message text', validators=[DataRequired()])
+    text = CKEditorField('Template body', validators=[DataRequired()])
     submit = SubmitField('Submit')
 
 class NewInterviewForm(FlaskForm):
@@ -68,3 +73,16 @@ class NewTaskForm(FlaskForm):
 class DelegateTaskForm(FlaskForm):
     delegate_id = SelectField('Select user to delegate the task:', validators=[DataRequired(message="User is required")])
     delegate_task = SubmitField('Delegate')
+
+class SelectTemplateForm(FlaskForm):
+    templates = SelectField('Select pre-made template:', validators=[NoneOf("", message="Please select the template you want to use!")])
+    select = SubmitField('Select')
+
+class MessageForm(FlaskForm):
+    send_to = StringField('Send To:', validators=[DataRequired(message="Recipient email required")])
+    carbon_copy = StringField('CC:', validators=[DataRequired(message="Recipient email required")])
+    subject = StringField('Subject:', validators=[DataRequired(message="Recipient email required")])
+    text = CKEditorField('Email Body:', validators=[DataRequired()])
+    send = SubmitField('Send')
+
+

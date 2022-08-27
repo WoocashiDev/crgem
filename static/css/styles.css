@@ -11699,3 +11699,23 @@ body {
   font-size: 0.75rem;
   border-radius: 0.25rem !important;
 }
+
+.flash-error {
+    color: red;
+}
+
+.flash-success {
+    color: green;
+}
+
+.pending-color {
+    background-color: #F7F6DC;
+}
+
+.completed-color {
+    background-color: #B1D7B4;
+}
+
+.cancelled-color {
+    background-color: #FFC090;
+}

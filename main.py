@@ -1,14 +1,14 @@
 from flask import Flask, render_template, redirect, url_for, flash, abort, request, send_from_directory
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm, DelegateTaskForm, InterviewEditForm
+from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm, DelegateTaskForm, InterviewEditForm, SelectTemplateForm, MessageForm
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey, Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import date, datetime
+from datetime import date, datetime, time
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.utils import secure_filename
@@ -47,12 +47,12 @@ class User(db.Model, UserMixin, Base):
     phone = db.Column(db.String, nullable=False)
     type = db.Column(db.String, nullable=False)
     password = db.Column(db.String, nullable=False)
-    interviews = relationship("Interview", back_populates="created_by")
     templates = relationship("Template", back_populates="created_by")
     candidates = relationship("Candidate", back_populates="created_by")
     tasks_sent = relationship("Task", primaryjoin="User.id==Task.sender_id", back_populates="from_user")
     tasks_received = relationship("Task", primaryjoin="User.id==Task.recipient_id", back_populates="to_user")
     tasks_delegated = relationship("Task", primaryjoin="User.id==Task.delegate_id", back_populates="delegated_by")
+    message = relationship("Message", primaryjoin="Message.user_id==User.id", back_populates="user")
 
 class Template(db.Model, Base):
     __tablename__="templates"
@@ -63,24 +63,6 @@ class Template(db.Model, Base):
     owner_id = Column(Integer, ForeignKey('users.id'))
     created_by = relationship("User", back_populates="templates")
 
-class Interview(db.Model, Base):
-    __tablename__="interviews"
-    id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String, nullable=False)
-    last_name = db.Column(db.String, nullable=False)
-    email = db.Column(db.String, nullable=False)
-    phone = db.Column(db.String, nullable=False)
-    req_id = db.Column(db.String, nullable=False)
-    role = db.Column(db.String, nullable=False)
-    recruiter = db.Column(db.String, nullable=False)
-    interviewers = db.Column(db.String, nullable=False)
-    date = db.Column(db.Date, nullable=True)
-    time = db.Column(db.Time, nullable=True)
-    notes = db.Column(db.Text, nullable=False)
-    owner_id = Column(Integer, ForeignKey('users.id'))
-    created_by = relationship("User", back_populates="interviews")
-    creation_time = db.Column(db.DateTime, nullable=False)
-    completion_time = db.Column(db.DateTime, nullable=True)
 
 class Candidate(db.Model, Base):
     __tablename__="candidates"
@@ -95,6 +77,7 @@ class Candidate(db.Model, Base):
     created_by = relationship("User", back_populates="candidates")
     created_date = db.Column(db.Date, nullable=False)
     tasks = relationship("Task", back_populates="candidate")
+    message = relationship("Message", primaryjoin="Message.candidate_id==Candidate.id", back_populates="candidate")
 
 class Task(db.Model, Base):
     __tablename__="tasks"
@@ -118,7 +101,25 @@ class Task(db.Model, Base):
     interview_date = db.Column(db.Date, nullable=True)
     interview_time = db.Column(db.Time, nullable=True)
     scheduler_notes = db.Column(db.Text, nullable=True)
-    completion_time = db.Column(db.DateTime, nullable=True)
+    time_completed = db.Column(db.Time, nullable=True)
+    pipeline_status = db.Column(db.String, nullable=False)
+    message = relationship("Message", primaryjoin="Message.task_id==Task.id", back_populates="task")
+
+class Message(db.Model, Base):
+    __tablename__="messages"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    candidate_id = Column(Integer, ForeignKey('candidates.id'), nullable=False)
+    task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
+    task = relationship("Task", foreign_keys=[task_id], back_populates="message")
+    candidate = relationship("Candidate", foreign_keys=[candidate_id], back_populates="message")
+    user = relationship("User", foreign_keys=[user_id], back_populates="message")
+    subject = db.Column(db.String, nullable=False)
+    text_content = db.Column(db.Text, nullable=False)
+    sent_date = db.Column(db.Date, nullable=True)
+    sent_time = db.Column(db.Time, nullable=True)
+
+
 
 db.create_all()
 
@@ -195,6 +196,19 @@ def templates():
     print(templates)
     return render_template('message-templates.html', templates=templates, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
+### TEMPLATE SHORT CODES ###
+short_codes = {
+    "USER_FULL_NAME": "{current_user.full_name}",
+    "USER_FIRST_NAME": "{current_user.full_name}",
+    "CANDIDATE_FULL_NAME": "{task.candidate.full_name}",
+    "CANDIDATE_FIRST_NAME": "{task.candidate.first_name}",
+    "RECRUITER_FIRST_NAME": "{task.from_user.first_name}",
+    "RECRUITER_FULL_NAME": "{task.from_user.full_name}",
+    "ROLE": "{task.role}",
+    "INTERVIEW_DATE": "{task.interview_date}",
+    "INTERVIEW_TIME": "{task.interview_time}",
+    "INTERVIEWERS": "{task.interviewers}"
+}
 
 @app.route('/templates/new', methods=['POST', 'GET'])
 def new_template():
@@ -205,7 +219,7 @@ def new_template():
         db.session.add(new_template)
         db.session.commit()
         return redirect(url_for('templates'))
-    return render_template('create-template.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
+    return render_template('create-template.html', short_codes=short_codes, form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 
 @app.route('/templates/edit/<int:template_id>', methods=['POST', 'GET'])
@@ -221,7 +235,7 @@ def edit_template(template_id):
         db.session.commit()
         return redirect(url_for('templates'))
 
-    return render_template('edit-template.html', form=form, template_id=template_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
+    return render_template('edit-template.html', short_codes=short_codes, form=form, template_id=template_id, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 
 @app.route('/templates/delete/<int:template_id>')
@@ -247,6 +261,7 @@ def create_new_task(form):
         date_sent=date.today(),
         is_archived=False,
         status="pending",
+        pipeline_status="pending",
     )
     return new_task
 
@@ -306,6 +321,22 @@ def pipeline_edit(task_id):
 def pipeline_delete(task_id):
     task_to_delete = Task.query.get(task_id)
     db.session.delete(task_to_delete)
+    db.session.commit()
+    return redirect(url_for('pipeline'))
+
+@app.route('/pipeline/complete/<int:task_id>')
+def pipeline_complete(task_id):
+    task_completed = Task.query.get(task_id)
+    task_completed.pipeline_status = "completed"
+    task_completed.date_completed = date.today()
+    task_completed.time_completed = datetime.now().time()
+    db.session.commit()
+    return redirect(url_for('pipeline'))
+
+@app.route('/pipeline/cancel/<int:task_id>')
+def pipeline_cancel(task_id):
+    task_cancelled = Task.query.get(task_id)
+    task_cancelled.pipeline_status = "cancelled"
     db.session.commit()
     return redirect(url_for('pipeline'))
 
@@ -396,7 +427,8 @@ def task_delegate(task_id):
 @app.route('/check_tasks_details/<int:task_id>')
 def check_task_details(task_id):
     task = Task.query.get(task_id)
-    return render_template('view_task.html', task_id=task_id, task=task)
+    messages = task.message
+    return render_template('view_task.html', task_id=task_id, task=task, messages=messages)
 
 ###################################### MANAGING USERS IN ADMIN PANEL ###########################################
 
@@ -527,7 +559,49 @@ def inbox():
     user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
     return render_template('inbox.html', user_tasks=user_tasks, tasks_count=get_tasks_count(), current_user=current_user, delegated_tasks=get_delegations())
 
+@app.route('/send_message/<task_id>', methods=['POST', 'GET'])
+def send_message(task_id):
+    task = Task.query.get(task_id)
+    templates = db.session.query(Template).all()
+    templates_text = {template.name: template.text.format(task=task, current_user=current_user) for template in templates}
+    print(templates_text)
+    templates_names_list = [template.name for template in templates]
+    templates_names_list.insert(0, "")
+    form = SelectTemplateForm()
+    form.templates.choices = templates_names_list
 
+    message_form = MessageForm(
+        send_to=task.candidate.email,
+        carbon_copy=task.from_user.email,
+        subject=f"Interview with {task.candidate.full_name} for the role of {task.role}",
+    )
+
+    if message_form.validate_on_submit() and message_form.send.data:
+        new_message = Message(
+            user=current_user,
+            candidate=task.candidate,
+            task=task,
+            subject=message_form.subject.data,
+            text_content=message_form.text.data,
+            sent_date=datetime.today(),
+            sent_time=datetime.now().time(),
+        )
+        db.session.add(new_message)
+        db.session.commit()
+        flash('The message has been successfully sent!')
+        return redirect(url_for('pipeline'))
+
+    elif form.validate_on_submit() and form.select.data:
+        chosen_template = templates_text[form.templates.data]
+        message_form.text.data = chosen_template
+    else:
+        for field_name, error_messages in form.errors.items():
+            for err in error_messages:
+                flash(err)
+
+
+
+    return render_template('send_message.html', templates=templates, form=form, task=task, task_id=task_id, message_form=message_form, current_user=current_user)
 
 if __name__ == "__main__":
     app.run(debug=True)
