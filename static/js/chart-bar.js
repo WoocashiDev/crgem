@@ -6,11 +6,9 @@ function initBarChart(chart_id, data, color) {
 const users = data.map(element => element.user_name);
 const tasks = data.map(element => element.task_count)
 let highest_number = Math.max(...tasks)
-console.log(highest_number)
 
 
-console.log(users)
-console.log(tasks)
+
 // Set new default font family and font color to mimic Bootstrap's default styling
 Chart.defaults.global.defaultFontFamily = '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
 Chart.defaults.global.defaultFontColor = '#292b2c';

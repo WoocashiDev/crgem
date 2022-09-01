@@ -11817,15 +11817,22 @@ margin-top: 2rem;
 font-size: 20px;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 html, body {
     overflow-x: hidden;
     overflow-y: scroll;
     position: relative;
 }
+.nav-link {
+    border-radius: 5px;
+}
 
-.nav-link.active {
-background-color: white;
-color: #f4511e;
+.nav-link.active, .nav-link:hover {
+    background-color: darkgrey;
+    color: white;
 }
 
 #carouselDark .carousel-inner {
@@ -11833,4 +11840,12 @@ color: #f4511e;
     width: 80%;
     margin: 0 auto;
     overflow: hidden;
+}
+
+#workflow, #intro {
+    padding: 60px 0;
+}
+
+#contact {
+    padding-bottom: 80px;
 }
