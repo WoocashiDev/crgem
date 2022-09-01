@@ -201,12 +201,12 @@ def register():
 
     return render_template('register.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
-@app.route('/get_started')
+@app.route('/')
 def landing_page():
     return render_template('get_started.html')
 
 
-@app.route('/')
+@app.route('/home')
 @login_required
 def home():
     users = db.session.query(User).all()
