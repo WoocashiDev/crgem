@@ -16,8 +16,10 @@ from functools import wraps
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import env
 from markupsafe import Markup
+
+os.environ['SECRET_KEY'] = 'TOP_SECRET_KEY!'
+os.environ['EMAIL_PASSWORD'] = "ymonksdaemqckpsj"
 
 # INITIATING APP EXTENSIONS
 app = Flask(__name__)
