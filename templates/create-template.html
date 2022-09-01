@@ -22,7 +22,7 @@
 					<div class="form mb-4">
 						{{ form.name.label }} {{ form.name(class_="form-control") }}
 					</div>
-					<span>Select short codes to get hold of a data from your tracker</span>
+					<span>Select short codes to get hold of the data from your tracker</span>
 					<div class="d-flex flex-wrap mb-4">
 						{% for key, value in short_codes.items() %}
 						<button type="button" class="btn btn-outline-primary mt-2 mb-2 me-2 short-code-button" data-shortcode='{{value}}'>{{key}}</button>

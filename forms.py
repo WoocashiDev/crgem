@@ -62,13 +62,15 @@ class NewCandidateForm(FlaskForm):
     cv = FileField("Upload Candidate's CV")
     submit = SubmitField('Submit')
 
+button_style = {'class': 'm-4'}
+
 class NewTaskForm(FlaskForm):
     recipient = SelectField('Send to:', validators=[DataRequired(message="Send to is required")])
     candidate_id = SelectField('Select Candidate:', validators=[DataRequired(message="Candidate is required")])
     interviewers = StringField('List interviewers (separated by ","):', validators=[DataRequired(message="interviewers are required")])
     role = StringField('Position:', validators=[DataRequired(message="Position is required")])
     recruiter_notes = CKEditorField('Interview details:')
-    submit = SubmitField('Submit')
+    submit = SubmitField('Submit', render_kw=button_style)
 
 class DelegateTaskForm(FlaskForm):
     delegate_id = SelectField('Select user to delegate the task:', validators=[DataRequired(message="User is required")])

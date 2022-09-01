@@ -13,6 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.utils import secure_filename
 from flask_modals import Modal, render_template_modal
+from functools import wraps
 
 os.environ['SECRET_KEY'] = 'TOP_SECRET_KEY!'
 # INITIATING APP EXTENSIONS
@@ -132,6 +133,23 @@ def load_user(user_id):
     except:
         return None
 
+# ADMIN ONLY DECORATOR FUNCTION
+def admin_only(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        if current_user.id != 1:
+            return abort(403, description="You are not authorized not logged in as admin")
+        return function(*args, **kwargs)
+    return decorated_function
+
+def authenticated_only(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return abort(403, description="You are not logged in!")
+        return function(*args, **kwargs)
+    return decorated_function
+
 @app.route('/login', methods=['POST', 'GET'])
 def login():
     form = LoginForm()
@@ -140,7 +158,6 @@ def login():
         if user:
             if check_password_hash(user.password, form.password.data):
                 login_user(user)
-                print(current_user.is_authenticated)
                 return redirect(url_for('home'))
             else:
                 flash('The password seems incorrect. Try again')
@@ -149,9 +166,10 @@ def login():
     return render_template('login.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 @app.route('/logout')
+@login_required
 def logout():
     logout_user()
-    return redirect(url_for('home'))
+    return redirect(url_for('login'))
 
 
 @app.route('/register', methods=['POST', 'GET'])
@@ -169,11 +187,10 @@ def register():
             password=hashed_password,
         )
         user_email = User.query.filter_by(email=new_user.email).first()
-        print(user_email)
         if not user_email:
             db.session.add(new_user)
             db.session.commit()
-            return redirect(url_for('home'))
+            return redirect(url_for('login'))
         else:
             flash('The email provided already exists in the database. Please select another one or log in to your account')
     else:
@@ -183,17 +200,60 @@ def register():
 
     return render_template('register.html', form=form, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
+@app.route('/get_started')
+def landing_page():
+    return render_template('get_started.html')
+
+
 @app.route('/')
+@login_required
 def home():
-    return render_template('index.html', current_user=current_user, is_authenticated=current_user.is_authenticated)
+    users = db.session.query(User).all()
+    data_pending=[]
+    data_new_tasks=[]
+    data_completed_tasks=[]
+
+    for user in users:
+        pipeline_pending_tasks = Task.query.filter_by(recipient_id=user.id, pipeline_status="pending", status="accepted").all()
+        pending_task={
+            'user_name': user.full_name,
+            'task_count': len(pipeline_pending_tasks),
+        }
+        data_pending.append(pending_task)
+
+        pipeline_new_tasks = Task.query.filter_by(recipient_id=user.id, pipeline_status="pending", status="pending").all()
+        new_task={
+            'user_name': user.full_name,
+            'task_count': len(pipeline_new_tasks),
+        }
+        data_new_tasks.append(new_task)
+
+        pipeline_completed_tasks = Task.query.filter_by(recipient_id=user.id, pipeline_status="completed").all()
+        completed_tasks={
+            'user_name': user.full_name,
+            'task_count': len(pipeline_completed_tasks),
+        }
+        data_completed_tasks.append(completed_tasks)
+
+    tasks_completed = len(Task.query.filter_by(pipeline_status="completed").all())
+    tasks_accepted = len(Task.query.filter_by(pipeline_status="pending", status="accepted").all())
+    tasks_pending = len(Task.query.filter_by(pipeline_status="pending", status="pending").all())
+
+    data_tasks_status = {
+        "completed": tasks_completed,
+        "accepted": tasks_accepted,
+        "pending": tasks_pending,
+    }
+
+    return render_template('index.html', current_user=current_user, is_authenticated=current_user.is_authenticated, data_pending=data_pending, data_new_tasks=data_new_tasks, data_completed_tasks=data_completed_tasks, data_tasks_status=data_tasks_status)
 
 
 ###################################### MANAGING COMMUNICATION TEMPLATES ###########################################
 
 @app.route('/templates')
+@login_required
 def templates():
     templates = db.session.query(Template).all()
-    print(templates)
     return render_template('message-templates.html', templates=templates, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 ### TEMPLATE SHORT CODES ###
@@ -211,6 +271,7 @@ short_codes = {
 }
 
 @app.route('/templates/new', methods=['POST', 'GET'])
+@login_required
 def new_template():
     form = NewTemplateForm()
     if form.validate_on_submit():
@@ -223,6 +284,7 @@ def new_template():
 
 
 @app.route('/templates/edit/<int:template_id>', methods=['POST', 'GET'])
+@login_required
 def edit_template(template_id):
     template = Template.query.get(template_id)
     form = NewTemplateForm(
@@ -239,6 +301,7 @@ def edit_template(template_id):
 
 
 @app.route('/templates/delete/<int:template_id>')
+@login_required
 def delete_template(template_id):
     template_to_delete = Template.query.get(template_id)
     db.session.delete(template_to_delete)
@@ -246,8 +309,8 @@ def delete_template(template_id):
     return redirect(url_for('templates'))
 
 ###################################### CREATING NEW TASKS FOR PIPELINE & INBOX ###########################################
-
 def create_new_task(form):
+
     """pass over the form"""
     chosen_recipient = User.query.filter_by(full_name=form.recipient.data).first()
     chosen_candidate = Candidate.query.filter_by(full_name=form.candidate_id.data).first()
@@ -268,20 +331,20 @@ def create_new_task(form):
 ###################################### MANAGING PIPELINE ###########################################
 #### PIPELINE SHOWS ONLY ACCEPTED TASKS! ###
 @app.route('/pipeline')
+@login_required
 def pipeline():
-    tasks = Task.query.filter_by(status="accepted").all()
+    tasks = Task.query.filter_by(recipient_id=current_user.id, status="accepted").all()
     return render_template('pipeline.html', tasks=tasks, current_user=current_user, is_authenticated=current_user.is_authenticated)
 
 
 @app.route('/pipeline/new', methods=['GET', 'POST'])
+@login_required
 def pipeline_new():
     form = NewInterviewForm()
     candidates = db.session.query(Candidate).all()
     candidates_list = [candidate.full_name for candidate in candidates]
     users = db.session.query(User).all()
     users_list = [user.full_name for user in users]
-    print(candidates_list)
-    print(users)
     form.candidate_id.choices = candidates_list
     form.recipient.choices = users_list
     if form.validate_on_submit():
@@ -299,6 +362,7 @@ def pipeline_new():
 
 
 @app.route('/pipeline/edit/<int:task_id>', methods=['POST', 'GET'])
+@login_required
 def pipeline_edit(task_id):
     task = Task.query.get(task_id)
     form = InterviewEditForm(
@@ -318,6 +382,7 @@ def pipeline_edit(task_id):
 
 
 @app.route('/pipeline/delete/<int:task_id>')
+@login_required
 def pipeline_delete(task_id):
     task_to_delete = Task.query.get(task_id)
     db.session.delete(task_to_delete)
@@ -325,6 +390,7 @@ def pipeline_delete(task_id):
     return redirect(url_for('pipeline'))
 
 @app.route('/pipeline/complete/<int:task_id>')
+@login_required
 def pipeline_complete(task_id):
     task_completed = Task.query.get(task_id)
     task_completed.pipeline_status = "completed"
@@ -334,6 +400,7 @@ def pipeline_complete(task_id):
     return redirect(url_for('pipeline'))
 
 @app.route('/pipeline/cancel/<int:task_id>')
+@login_required
 def pipeline_cancel(task_id):
     task_cancelled = Task.query.get(task_id)
     task_cancelled.pipeline_status = "cancelled"
@@ -345,14 +412,14 @@ def pipeline_cancel(task_id):
 ##### INBOX SHOWS ALL PENDING, ACCEPTED AND DELEGATED TASKS BY CURRENT USER. !!!! IT DOES NOT SHOW ARCHIVED ONES THOUGH !!!!
 
 @app.route('/tasks/new', methods=['POST', 'GET'])
+@login_required
 def tasks_new():
     candidates = db.session.query(Candidate).all()
     candidates_list = [candidate.full_name for candidate in candidates]
     users = db.session.query(User).all()
     users_list = [user.full_name for user in users]
     form = NewTaskForm()
-    print(candidates_list)
-    print(users)
+
     form.candidate_id.choices = candidates_list
     form.recipient.choices = users_list
     if form.validate_on_submit():
@@ -364,6 +431,7 @@ def tasks_new():
     return render_template('tasks_new.html', form=form)
 
 @app.route('/inbox/task_accept/<int:task_id>', methods=['POST', 'GET'])
+@login_required
 def task_accept(task_id):
     accepted_task = Task.query.filter_by(id=task_id).first()
     accepted_task.status = "accepted"
@@ -380,7 +448,7 @@ def get_tasks_count():
         if task.delegate_id == current_user.id and task.recipient_id != current_user.id:
             delegated_list.append(task)
     delegated_count = len(delegated_list)
-    accepted_count = len(Task.query.filter_by(recipient_id=current_user.id, status="accepted").all())
+    accepted_count = len(Task.query.filter_by(recipient_id=current_user.id, status="accepted", pipeline_status="pending").all())
     pending_count = len(Task.query.filter_by(recipient_id=current_user.id, status="pending").all())
     # Delegated tasks show the tasks delegated by current user
 
@@ -397,18 +465,17 @@ def get_delegations():
     return delegations
 
 @app.route('/inbox/delegate/<int:task_id>', methods=['POST', 'GET'])
+@login_required
 def task_delegate(task_id):
     user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
+    new_task_form = NewTaskForm()
     form = DelegateTaskForm()
     users = db.session.query(User).all()
     users_list = [user.full_name for user in users]
     form.delegate_id.choices = users_list
-    print(users_list)
     if form.validate_on_submit():
         chosen_recipient = User.query.filter_by(full_name=form.delegate_id.data).first()
         delegated_task = Task.query.filter_by(id=task_id).first()
-        print(chosen_recipient.id)
-        print(current_user)
         delegated_task.to_user = chosen_recipient
         delegated_task.delegated_by = current_user
         delegated_task.status = "pending"
@@ -420,11 +487,12 @@ def task_delegate(task_id):
         for field_name, error_messages in form.errors.items():
             for err in error_messages:
                 flash(err)
-    return render_template("modal_delegate.html", user_tasks=user_tasks, form=form, task_id=task_id, current_user=current_user, tasks_count=get_tasks_count(), delegated_tasks=get_delegations())
+    return render_template("modal_delegate.html", new_task_form=new_task_form, user_tasks=user_tasks, form=form, task_id=task_id, current_user=current_user, tasks_count=get_tasks_count(), delegated_tasks=get_delegations())
 
 ######### CHECKING TASKS DETAILS ###########
 
 @app.route('/check_tasks_details/<int:task_id>')
+@login_required
 def check_task_details(task_id):
     task = Task.query.get(task_id)
     messages = task.message
@@ -433,12 +501,14 @@ def check_task_details(task_id):
 ###################################### MANAGING USERS IN ADMIN PANEL ###########################################
 
 @app.route('/users')
+@login_required
 def users():
     users = db.session.query(User).all()
     return render_template('users.html', users=users)
 
 
 @app.route('/users/new', methods=['POST', 'GET'])
+@login_required
 def user_new():
     form = NewUserAdminForm()
     if form.validate_on_submit():
@@ -453,7 +523,7 @@ def user_new():
             password=hashed_password,
         )
         user_email = User.query.filter_by(email=new_user.email).first()
-        print(user_email)
+
         if not user_email:
             db.session.add(new_user)
             db.session.commit()
@@ -470,6 +540,7 @@ def user_new():
 
 
 @app.route('/users/edit/<int:user_id>', methods=["Post", "GET"])
+@login_required
 def user_edit(user_id):
     user_to_edit = User.query.get(user_id)
     form = NewUserAdminForm(
@@ -492,6 +563,7 @@ def user_edit(user_id):
     return render_template('user_edit.html', user_id=user_id, form=form)
 
 @app.route('/users/delete/<int:user_id>')
+@login_required
 def user_delete(user_id):
     deleted_user = User.query.get(user_id)
     db.session.delete(deleted_user)
@@ -503,6 +575,7 @@ def user_delete(user_id):
 
 
 @app.route('/candidates')
+@login_required
 def candidates():
     candidates = db.session.query(Candidate).all()
 
@@ -510,6 +583,7 @@ def candidates():
     return render_template('candidates.html', candidates=candidates, current_user=current_user)
 
 @app.route('/candidates/new', methods=['POST', 'GET'])
+@login_required
 def candidates_new():
     form = NewCandidateForm()
     if form.validate_on_submit():
@@ -548,6 +622,7 @@ def candidates_new():
     return render_template('candidates_new.html', form=form, current_user=current_user)
 
 @app.route('/candidate/show_cv/<int:candidate_id>')
+@login_required
 def show_cv(candidate_id):
     candidate = Candidate.query.get(candidate_id)
     candidate_cv = candidate.cv
@@ -555,16 +630,19 @@ def show_cv(candidate_id):
 
 
 @app.route('/inbox')
+@login_required
 def inbox():
     user_tasks = Task.query.filter_by(recipient_id=current_user.id).all()
-    return render_template('inbox.html', user_tasks=user_tasks, tasks_count=get_tasks_count(), current_user=current_user, delegated_tasks=get_delegations())
+    new_task_form = NewTaskForm()
+    return render_template('inbox.html', user_tasks=user_tasks, tasks_count=get_tasks_count(), current_user=current_user, delegated_tasks=get_delegations(), new_task_form=new_task_form)
 
 @app.route('/send_message/<task_id>', methods=['POST', 'GET'])
+@login_required
 def send_message(task_id):
     task = Task.query.get(task_id)
     templates = db.session.query(Template).all()
     templates_text = {template.name: template.text.format(task=task, current_user=current_user) for template in templates}
-    print(templates_text)
+
     templates_names_list = [template.name for template in templates]
     templates_names_list.insert(0, "")
     form = SelectTemplateForm()

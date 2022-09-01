@@ -24,11 +24,11 @@
                                     <div class="card-body">
                                         <form method="POST" novalidate action="">
                                             {{ form.csrf_token }}
-                                            <div class="form-floating mb-3">
+                                            <div class="mb-3">
                                                 {{ form.login.label }}
                                                 {{ form.login(class_="form-control") }}
                                             </div>
-                                            <div class="form-floating mb-3">
+                                            <div class="mb-3">
                                                 {{ form.password.label }}
                                                 {{ form.password(class_="form-control") }}
                                             </div>

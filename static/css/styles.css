@@ -11719,3 +11719,118 @@ body {
 .cancelled-color {
     background-color: #FFC090;
 }
+.form input.btn {
+    margin: 20px 0;
+    float: right;
+}
+
+.gem-logo {
+    max-width: 6rem;
+    max-height: 5 rem;
+    margin-left: 30px;
+ }
+
+ #jumbotronVideo {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  min-width: 100%;
+  min-height: 100%;
+ }
+
+ .jumbotron-content {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #f1f1f1;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+section {
+    position: relative;
+    min-width: 100%;
+    min-height: 100%;
+
+}
+
+.jumbotron-container {
+    position: relative;
+     min-width: 100%;
+    min-height: 100%;
+}
+
+.jumbotron-logo {
+    width: 150px;
+}
+
+.bg-half-transparent {
+    background: rgba(255, 255, 255, 0.8);
+    background-size: cover;
+}
+
+.contact-form-container {
+    max-width: 60rem;
+    min-width: 40rem;
+}
+
+.collab-bg {
+    height: 30rem;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
+    background-size: cover;
+    width: 100%;
+}
+
+.quote {
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+}
+
+.quote h4 {
+    width: 60%;
+}
+
+.toggler-color {
+    color: black;
+    z-index: 100;
+}
+
+.customized-nav {
+    height: 70px;
+}
+
+#carouselDark .carousel-indicators {
+    top: 4.5rem;
+}
+
+#carouselDark h3 {
+    text-align: center;
+    padding-bottom: 2rem;
+}
+
+#carouselDark p {
+margin-top: 2rem;
+font-size: 20px;
+}
+
+html, body {
+    overflow-x: hidden;
+    overflow-y: scroll;
+    position: relative;
+}
+
+.nav-link.active {
+background-color: white;
+color: #f4511e;
+}
+
+#carouselDark .carousel-inner {
+    position: relative;
+    width: 80%;
+    margin: 0 auto;
+    overflow: hidden;
+}

@@ -17,7 +17,7 @@
 			<hr>
 			<div class="mt-4">
 				{{ form.csrf_token }}
-				{{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
+				{{ wtf.quick_form(form, novalidate=True,button_map={"submit": "primary" }) }}
 				{% with messages = get_flashed_messages() %}
 					{% if messages %}
 					<ul class="list-group mt-4">
