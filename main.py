@@ -18,6 +18,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import env
+from markupsafe import Markup
 
 # INITIATING APP EXTENSIONS
 app = Flask(__name__)
