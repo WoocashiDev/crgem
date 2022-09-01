@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, abort, request, send_from_directory
+from flask import Flask, render_template, redirect, url_for, flash, abort, send_from_directory
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 from forms import NewTemplateForm, NewInterviewForm, NewUserForm, LoginForm, NewUserAdminForm, NewCandidateForm, NewTaskForm, DelegateTaskForm, InterviewEditForm, SelectTemplateForm, MessageForm
@@ -8,14 +8,17 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey, Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import date, datetime, time
+from datetime import date, datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.utils import secure_filename
-from flask_modals import Modal, render_template_modal
+from flask_modals import Modal
 from functools import wraps
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import env
 
-os.environ['SECRET_KEY'] = 'TOP_SECRET_KEY!'
 # INITIATING APP EXTENSIONS
 app = Flask(__name__)
 csrf = CSRFProtect()
@@ -23,10 +26,14 @@ csrf.init_app(app)
 Bootstrap(app)
 ckeditor = CKEditor(app)
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
-login_manager = LoginManager()
-login_manager.init_app(app)
+EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
+login_manager = LoginManager(app)
+login_manager.login_view = "landing_page"
+
 Base = declarative_base()
 modal = Modal(app)
+
+print(EMAIL_PASSWORD)
 
 
 
@@ -142,13 +149,6 @@ def admin_only(function):
         return function(*args, **kwargs)
     return decorated_function
 
-def authenticated_only(function):
-    @wraps(function)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return abort(403, description="You are not logged in!")
-        return function(*args, **kwargs)
-    return decorated_function
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
@@ -212,7 +212,6 @@ def home():
     data_pending=[]
     data_new_tasks=[]
     data_completed_tasks=[]
-
     for user in users:
         pipeline_pending_tasks = Task.query.filter_by(recipient_id=user.id, pipeline_status="pending", status="accepted").all()
         pending_task={
@@ -220,30 +219,27 @@ def home():
             'task_count': len(pipeline_pending_tasks),
         }
         data_pending.append(pending_task)
-
         pipeline_new_tasks = Task.query.filter_by(recipient_id=user.id, pipeline_status="pending", status="pending").all()
         new_task={
             'user_name': user.full_name,
             'task_count': len(pipeline_new_tasks),
         }
         data_new_tasks.append(new_task)
-
         pipeline_completed_tasks = Task.query.filter_by(recipient_id=user.id, pipeline_status="completed").all()
         completed_tasks={
             'user_name': user.full_name,
             'task_count': len(pipeline_completed_tasks),
         }
         data_completed_tasks.append(completed_tasks)
-
     tasks_completed = len(Task.query.filter_by(pipeline_status="completed").all())
     tasks_accepted = len(Task.query.filter_by(pipeline_status="pending", status="accepted").all())
     tasks_pending = len(Task.query.filter_by(pipeline_status="pending", status="pending").all())
-
     data_tasks_status = {
         "completed": tasks_completed,
         "accepted": tasks_accepted,
         "pending": tasks_pending,
     }
+
 
     return render_template('index.html', current_user=current_user, is_authenticated=current_user.is_authenticated, data_pending=data_pending, data_new_tasks=data_new_tasks, data_completed_tasks=data_completed_tasks, data_tasks_status=data_tasks_status)
 
@@ -636,6 +632,32 @@ def inbox():
     new_task_form = NewTaskForm()
     return render_template('inbox.html', user_tasks=user_tasks, tasks_count=get_tasks_count(), current_user=current_user, delegated_tasks=get_delegations(), new_task_form=new_task_form)
 
+def send_email(message, recipient, cc):
+
+    sender = "yourgemcrm@gmail.com"
+
+    password = EMAIL_PASSWORD
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = message.subject
+    msg['From'] = current_user.email
+    msg['To'] = recipient
+    msg['Cc'] = cc
+    html = message.text_content
+    converted_text = MIMEText(html, 'html')
+    msg.attach(converted_text)
+
+    # Send the message via local SMTP server.
+    s = smtplib.SMTP_SSL("smtp.gmail.com", port=465)
+    s.login(sender, password)
+    # sendmail function takes 3 arguments: sender's address, recipient's address
+    # and message to send - here it is sent as one string.
+    s.sendmail(sender, recipient, msg.as_string())
+    s.quit()
+
+
+
+
 @app.route('/send_message/<task_id>', methods=['POST', 'GET'])
 @login_required
 def send_message(task_id):
@@ -664,6 +686,7 @@ def send_message(task_id):
             sent_date=datetime.today(),
             sent_time=datetime.now().time(),
         )
+        send_email(message=new_message, recipient=message_form.send_to.data, cc=message_form.carbon_copy.data)
         db.session.add(new_message)
         db.session.commit()
         flash('The message has been successfully sent!')
@@ -676,8 +699,6 @@ def send_message(task_id):
         for field_name, error_messages in form.errors.items():
             for err in error_messages:
                 flash(err)
-
-
 
     return render_template('send_message.html', templates=templates, form=form, task=task, task_id=task_id, message_form=message_form, current_user=current_user)
 

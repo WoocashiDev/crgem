@@ -82,7 +82,7 @@ class SelectTemplateForm(FlaskForm):
 
 class MessageForm(FlaskForm):
     send_to = StringField('Send To:', validators=[DataRequired(message="Recipient email required")])
-    carbon_copy = StringField('CC:', validators=[DataRequired(message="Recipient email required")])
+    carbon_copy = StringField('CC:')
     subject = StringField('Subject:', validators=[DataRequired(message="Recipient email required")])
     text = CKEditorField('Email Body:', validators=[DataRequired()])
     send = SubmitField('Send')
