@@ -12,7 +12,6 @@ from datetime import date, datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.utils import secure_filename
-from flask_modals import Modal
 from functools import wraps
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -32,7 +31,6 @@ login_manager = LoginManager(app)
 login_manager.login_view = "landing_page"
 
 Base = declarative_base()
-modal = Modal(app)
 
 print(EMAIL_PASSWORD)
 
